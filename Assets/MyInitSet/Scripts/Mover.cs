@@ -7,7 +7,7 @@ public class Mover
     static readonly TimerManager.TimerUpdateEventHandler OnMoveUpdate = MoveUpdate;
     static readonly TimerManager.TimerOnceEventHandler OnMoveEnd = MoveEnd;
 
-    static Dictionary<int, MoverConfig> moverConfigs = new Dictionary<int, MoverConfig>();
+    static readonly Dictionary<int, MoverConfig> moverConfigs = new Dictionary<int, MoverConfig>();
 
     struct MoverConfig
     {
