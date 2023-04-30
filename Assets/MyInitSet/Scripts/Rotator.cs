@@ -17,11 +17,12 @@ public class Rotator : MonoBehaviour
         public int rotateTimerID;
         public float rotateTime;
         public bool isLocal;
+        public TimerManager.TimerOnceEventHandler onEnd;
     }
 
     private Rotator() { }
 
-    public static int StartRotate(GameObject target, Vector3 rotAmo, float rotateTime = 0.0f, bool isLocal = false)
+    public static int StartRotate(GameObject target, Vector3 rotAmo, float rotateTime = 0.0f, bool isLocal = false, TimerManager.TimerOnceEventHandler endProcess = null)
     {
         RotatorConfig rotatorConfig = new RotatorConfig();
         rotatorConfig.rotateObject = target;
@@ -29,6 +30,7 @@ public class Rotator : MonoBehaviour
         rotatorConfig.endEulerAngles = rotatorConfig.startEulerAngles + rotAmo;
         rotatorConfig.rotateTime = rotateTime;
         rotatorConfig.isLocal = isLocal;
+        rotatorConfig.onEnd = endProcess;
         rotatorConfig.rotateTimerID = TimerManager.Instance.CreateTimer(rotateTime, 0.0f, null, OnRotateUpdate, OnRotateEnd);
 
         rotatorConfigs.Add(rotatorConfig.rotateTimerID, rotatorConfig);
@@ -128,6 +130,7 @@ public class Rotator : MonoBehaviour
         {
             rotatorConfig.rotateObject.transform.eulerAngles = rotatorConfig.endEulerAngles;
         }
+        rotatorConfig.onEnd?.Invoke(timerID);
         rotatorConfigs.Remove(timerID);
     }
 }

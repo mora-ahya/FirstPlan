@@ -17,11 +17,12 @@ public class Mover
         public MyMathf.CubicEasingType easingType;
         public int moveTimerID;
         public float moveTime;
+        public TimerManager.TimerOnceEventHandler onEnd;
     }
 
     private Mover() { }
 
-    public static int StartMove(GameObject target, Vector3 dest, float moveTime, MyMathf.CubicEasingType easingType = MyMathf.CubicEasingType.None)
+    public static int StartMove(GameObject target, Vector3 dest, float moveTime, MyMathf.CubicEasingType easingType = MyMathf.CubicEasingType.None, TimerManager.TimerOnceEventHandler endProcess = null)
     {
         MoverConfig moverConfig = new MoverConfig();
         moverConfig.moveObject = target;
@@ -29,6 +30,7 @@ public class Mover
         moverConfig.startPosition = target.transform.position;
         moverConfig.destPosition = dest;
         moverConfig.moveTime = moveTime;
+        moverConfig.onEnd = endProcess;
         moverConfig.moveTimerID = TimerManager.Instance.CreateTimer(moveTime, 0.0f, null, OnMoveUpdate, OnMoveEnd);
 
         moverConfigs.Add(moverConfig.moveTimerID, moverConfig);
@@ -113,6 +115,7 @@ public class Mover
     {
         moverConfigs.TryGetValue(timerID, out MoverConfig moverConfig);
         moverConfig.moveObject.transform.position = moverConfig.destPosition;
+        moverConfig.onEnd?.Invoke(timerID);
         moverConfigs.Remove(timerID);
     }
 }
