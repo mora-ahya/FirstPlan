@@ -1,37 +1,19 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using System.IO;
 
-public interface IObjectOnBoard
+public class BoardMaker : MonoBehaviour
 {
-    public GameObject SelfGameObject { get; }
-    public DirectionClass.DirectionEnum Direction { get; }
-    public int PositionNum { get;}
+    [SerializeField] int width = 11;
+    [SerializeField] int height = 14;
 
-    public bool OnHappendBoardEvent(int boardEventID);
-}
-
-class BoardPart
-{
-    public int Number;
-    public int HavingEventID;
-    public IObjectOnBoard HavingObject;
-    public int[] LinkedPartNumbers = new int[4];
-}
-
-public class Board : MonoBehaviour
-{
-    public float PartSize { get; } = 1.0f;
-    int width;
-    int height;
+    [SerializeField] float PartSize = 1.0f;
+    [SerializeField] string mapName = "";
     int boardLength;
 
     List<BoardPart> boardParts = new List<BoardPart>();
     GameObject basePosition;
-
-    List<IObjectOnBoard> objectsOnBoard = new List<IObjectOnBoard>();
 
     public virtual Vector3 GetPartPosition(int partNum)
     {
@@ -42,12 +24,6 @@ public class Board : MonoBehaviour
     {
         dest.Set((partNum % width + 0.5f) * PartSize, 0f, (partNum / width + 0.5f) * PartSize);
         dest += basePosition.transform.position;
-    }
-
-    public virtual int ManhattanDistance(int partNum1, int partNum2)
-    {
-        return Mathf.Abs(partNum1 / width - partNum2 / width)
-            + Mathf.Abs(partNum1 % width - partNum2 % width);
     }
 
     public virtual bool CheckPartExisting(int partNum, DirectionClass.DirectionEnum dir)
@@ -68,28 +44,6 @@ public class Board : MonoBehaviour
         }
 
         return false;
-    }
-
-    public bool CheckPathExisting(int partNum, DirectionClass.DirectionEnum direction)
-    {
-        if (partNum < 0 || width * height < partNum)
-        {
-            return false;
-        }
-
-        // パーツ間に壁がないかチェック
-
-        return true;
-    }
-
-    public bool CheckObjectExisting(int partNum)
-    {
-        if (partNum < 0 || boardLength < partNum)
-        {
-            return false;
-        }
-
-        return boardParts[partNum].HavingObject != null;
     }
 
     public int GetNextPartNumber(int partNum, DirectionClass.DirectionEnum direction)
@@ -117,20 +71,29 @@ public class Board : MonoBehaviour
         return -1;
     }
 
-    public int GetEventID(int partNum)
+    public void OnPressInitializeButton()
     {
-        if (partNum < 0 || boardLength < partNum)
+        Transform wallBase = transform.Find("wallBase");
+
+        if (wallBase != null)
         {
-            return -1;
+            DestroyImmediate(wallBase.gameObject);
         }
 
-        return boardParts[partNum].HavingEventID;
+        if (mapName == null || mapName == "")
+        {
+            InitializeDefault();
+        }
+        else
+        {
+            Initialize();
+        }
     }
 
-    public virtual void Initialize(string dataPath)
+    public virtual void Initialize()
     {
         basePosition = transform.Find("BasePosition").gameObject;
-        LoadBoard(dataPath);
+        LoadBoard();
         GenerateWalls();
     }
 
@@ -138,13 +101,13 @@ public class Board : MonoBehaviour
     {
         basePosition = transform.Find("BasePosition").gameObject;
 
-        Resize(11, 14);
+        Resize(width, height);
 
         for (int i = 0; i < boardLength; i++)
         {
             for (int j = 0; j < 4; j++)
             {
-                boardParts[i].LinkedPartNumbers[j] = GetNextPartNumber(i, DirectionClass.DirectionEnum.Forward + j);
+                boardParts[i].LinkedPartNumbers[j] = -1;
             }
         }
 
@@ -153,84 +116,63 @@ public class Board : MonoBehaviour
 
     void GenerateWalls()
     {
-        GameObject wall = GenerateWall(0, width - 1, true);
+        GameObject parent = new GameObject("wallBase");
+        parent.transform.parent = transform;
+
+        GameObject wall = GenerateWall(0, width - 1, true, parent.transform);
         Vector3 tmp = wall.transform.position;
         tmp.z = basePosition.transform.position.z;
         wall.transform.position = tmp;
+        wall.GetComponent<WallConfig>().enabled = false;
 
-        wall = GenerateWall(0, width - 1, true);
+        wall = GenerateWall(0, width - 1, true, parent.transform);
         tmp.z += height * PartSize;
         wall.transform.position = tmp;
+        wall.GetComponent<WallConfig>().enabled = false;
 
-        wall = GenerateWall(0, width * (height - 1), false);
+        wall = GenerateWall(0, width * (height - 1), false, parent.transform);
         tmp = wall.transform.position;
         tmp.x = basePosition.transform.position.x;
         wall.transform.position = tmp;
+        wall.GetComponent<WallConfig>().enabled = false;
 
-        wall = GenerateWall(0, width * (height - 1), false);
+        wall = GenerateWall(0, width * (height - 1), false, parent.transform);
         tmp.x += (width - 1) + PartSize;
         wall.transform.position = tmp;
+        wall.GetComponent<WallConfig>().enabled = false;
 
         for (int i = 0; i < height - 1; i++)
         {
-            int startWall = -1;
             for (int j = 0; j < width; j++)
             {
                 int num = i * width + j;
                 if (boardParts[num].LinkedPartNumbers[0] == -1)
                 {
-                    if (startWall == -1)
-                    {
-                        startWall = num;
-                    }
+                    wall = GenerateWall(num, num, true, parent.transform);
+                    wall.GetComponent<WallConfig>().BackOrLeftPart = num;
+                    wall.GetComponent<WallConfig>().ForwardOrRightPart = num + width;
+                    wall.GetComponent<WallConfig>().IsHorizon = true;
                 }
-                else
-                {
-                    if (startWall != -1)
-                    {
-                        GenerateWall(startWall, num - 1, true);
-                        startWall = -1;
-                    }
-                }
-            }
-
-            if (startWall != -1)
-            {
-                GenerateWall(startWall, (i + 1) * width - 1, true);
             }
         }
 
         for (int i = 0; i < width - 1; i++)
         {
-            int startWall = -1;
             for (int j = 0; j < height; j++)
             {
                 int num = i + j * width;
                 if (boardParts[num].LinkedPartNumbers[1] == -1)
                 {
-                    if (startWall == -1)
-                    {
-                        startWall = num;
-                    }
+                    wall = GenerateWall(num, num, false, parent.transform);
+                    wall.GetComponent<WallConfig>().BackOrLeftPart = num;
+                    wall.GetComponent<WallConfig>().ForwardOrRightPart = num + 1;
+                    wall.GetComponent<WallConfig>().IsHorizon = false;
                 }
-                else
-                {
-                    if (startWall != -1)
-                    {
-                        GenerateWall(startWall, num - width, false);
-                        startWall = -1;
-                    }
-                }
-            }
-
-            if (startWall != -1)
-            {
-                GenerateWall(startWall, width * (height - 1) + i, false);
             }
         }
     }
 
-    GameObject GenerateWall(int startNum, int endNum, bool isHorizon)
+    GameObject GenerateWall(int startNum, int endNum, bool isHorizon, Transform parent)
     {
         Vector3 wallOffset;
         Vector3 wallScale;
@@ -249,7 +191,8 @@ public class Board : MonoBehaviour
         GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
         wall.transform.position = (GetPartPosition(startNum) + GetPartPosition(endNum)) / 2.0f + wallOffset;
         wall.transform.localScale = wallScale;
-        wall.transform.parent = transform;
+        wall.transform.parent = parent;
+        wall.AddComponent<WallConfig>();
 
         return wall;
     }
@@ -280,34 +223,6 @@ public class Board : MonoBehaviour
             tmp.Number = i;
             boardParts.Add(tmp);
         }
-    }
-
-    public virtual void PutOnBoard(int partNum, IObjectOnBoard objectOnBoard)
-    {
-        if (partNum < 0 || boardLength < partNum)
-        {
-            return;
-        }
-
-        if (boardParts[partNum].HavingObject == null && objectsOnBoard.Contains(objectOnBoard) == false)
-        {
-            boardParts[partNum].HavingObject = objectOnBoard;
-            objectsOnBoard.Add(objectOnBoard);
-        }
-    }
-
-    public virtual int MoveObject(IObjectOnBoard objectOnBoard, DirectionClass.DirectionEnum moveDir)
-    {
-        BoardPart tmp = boardParts[objectOnBoard.PositionNum];
-        int nextPartNum = tmp.LinkedPartNumbers[(int)moveDir];
-
-        if (nextPartNum >= 0)
-        {
-            tmp.HavingObject = null;
-            boardParts[nextPartNum].HavingObject = objectOnBoard;
-        }
-
-        return nextPartNum;
     }
 
     [System.Serializable]
@@ -352,9 +267,11 @@ public class Board : MonoBehaviour
         }
     }
 
-    public void LoadBoard(string dataPath)
+    public void LoadBoard()
     {
         StreamReader reader = null;
+
+        string dataPath = Application.dataPath + "/Scripts/BoardMaker/" + mapName + ".json";
 
         try
         {
@@ -376,5 +293,96 @@ public class Board : MonoBehaviour
                 reader.Close();
             }
         }
+    }
+
+    public void SaveBoard()
+    {
+        Transform wallBase = transform.Find("wallBase");
+
+        if (wallBase != null)
+        {
+            WallConfig[] wallConfigs = wallBase.GetComponentsInChildren<WallConfig>(false);
+
+            foreach (WallConfig wallConfig in wallConfigs)
+            {
+                if (wallConfig.IsActive == false)
+                {
+                    if (wallConfig.IsHorizon)
+                    {
+                        boardParts[wallConfig.BackOrLeftPart].LinkedPartNumbers[0] = wallConfig.ForwardOrRightPart;
+                        boardParts[wallConfig.ForwardOrRightPart].LinkedPartNumbers[2] = wallConfig.BackOrLeftPart;
+                    }
+                    else
+                    {
+                        boardParts[wallConfig.BackOrLeftPart].LinkedPartNumbers[1] = wallConfig.ForwardOrRightPart;
+                        boardParts[wallConfig.ForwardOrRightPart].LinkedPartNumbers[3] = wallConfig.BackOrLeftPart;
+                    }
+                    
+                    continue;
+                }
+
+                switch (wallConfig.wallType)
+                {
+                    default:
+                        if (wallConfig.IsHorizon)
+                        {
+                            boardParts[wallConfig.BackOrLeftPart].LinkedPartNumbers[0] = -1;
+                            boardParts[wallConfig.ForwardOrRightPart].LinkedPartNumbers[2] = -1;
+                        }
+                        else
+                        {
+                            boardParts[wallConfig.BackOrLeftPart].LinkedPartNumbers[1] = -1;
+                            boardParts[wallConfig.ForwardOrRightPart].LinkedPartNumbers[3] = -1;
+                        }
+                        break;
+                }
+            }
+        }
+
+        StreamWriter writer = null;
+
+        string dataPath;
+
+        if (mapName == null || mapName == "")
+        {
+            dataPath = Application.dataPath + "/Scripts/BoardMaker/test.json";
+        }
+        else
+        {
+            dataPath = Application.dataPath + "/Scripts/BoardMaker/" + mapName + ".json";
+        }
+
+        try
+        {
+            writer = new StreamWriter(dataPath, false);
+            writer.WriteLine(JsonUtility.ToJson(new BoardSize(width, height)));
+
+            for (int i = 0; i < boardLength; i++)
+            {
+                BoardPartJson boardPartJson = new BoardPartJson();
+                boardPartJson.FromBoardPart(boardParts[i]);
+
+                writer.WriteLine(JsonUtility.ToJson(boardPartJson));
+            }
+        }
+        finally
+        {
+            if (writer != null)
+            {
+                writer.Close();
+            }
+        }
+    }
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        OnPressInitializeButton();
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        
     }
 }

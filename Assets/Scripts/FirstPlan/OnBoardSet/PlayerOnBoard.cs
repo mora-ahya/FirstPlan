@@ -9,11 +9,11 @@ public class PlayerOnBoard : MonoBehaviour, IFourDirectionInputReceiver, IObject
     public DirectionClass.DirectionEnum Direction { get; private set; }
 
     public GameObject SelfGameObject => gameObject;
-    public int positionNum { get; set; }
+    public int PositionNum { get; private set; }
 
-    public void OnHappendBoardEvent(int boardEventID)
+    public bool OnHappendBoardEvent(int boardEventID)
     {
-
+        return true;
     }
 
     int moverID;
@@ -30,8 +30,8 @@ public class PlayerOnBoard : MonoBehaviour, IFourDirectionInputReceiver, IObject
     public void Initialize(Board board, int partNum)
     {
         board.PutOnBoard(partNum, this);
-        positionNum = partNum;
-        moverID = Mover.StartMove(gameObject, board.PartNumberToWorldPosition(positionNum), 0.1f);
+        PositionNum = partNum;
+        moverID = Mover.StartMove(gameObject, board.GetPartPosition(PositionNum), 0.1f);
     }
 
     public void StartControl(FourDirectionInputManager directionButton)
@@ -72,23 +72,22 @@ public class PlayerOnBoard : MonoBehaviour, IFourDirectionInputReceiver, IObject
         Rotator.EndRotate(rotatorID);
 
         Board board = BoardManager.Instance.CurrentBoard;
-        int nextPosNum = board.GetNextPartNumber(positionNum, direction);
+
+        int nextPosNum = board.MoveObject(this, direction);
 
         if (nextPosNum < 0)
         {
             return;
         }
 
-        board.MoveObjectOnBoard(this, nextPosNum);
-        positionNum = nextPosNum;
-
-        moverID = Mover.StartMove(gameObject, board.PartNumberToWorldPosition(positionNum), 0.1f, MyMathf.CubicEasingType.None, OnMoveEnd);
+        PositionNum = nextPosNum;
+        moverID = Mover.StartMove(gameObject, board.GetPartPosition(PositionNum), 0.1f, MyMathf.CubicEasingType.None, OnMoveEnd);
     }
 
     void MoveEnd(int timerID)
     {
         Board board = BoardManager.Instance.CurrentBoard;
-        int eventID = board.GetEventID(positionNum);
+        int eventID = board.GetEventID(PositionNum);
         
     }
 
