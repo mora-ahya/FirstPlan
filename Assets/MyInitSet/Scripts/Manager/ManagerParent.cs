@@ -5,8 +5,8 @@ using UnityEngine;
 public interface IManagerBase
 {
     int ActPriority { get; }
-    void AwakeInitialize();
-    void LateAwakeInitialize();
+    void AwakeInitialize(); // îpé~
+    void LateAwakeInitialize(); // îpé~
     void Act();
 }
 
@@ -73,13 +73,14 @@ public class ManagerParent : MonoBehaviour
     void Clear()
     {
         managerList.Clear();
-        IsStarted = false;
+        IsStarted = true;
     }
 
     public void Initialize()
     {
         Instance.Clear();
-        StartCoroutine(AwakeInitialize());
+        gameObject.GetComponents<IManagerBase>(managerList);
+        managerList.Sort(comparer);
     }
 
     public void AddManager(IManagerBase managerBase)

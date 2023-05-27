@@ -18,6 +18,16 @@ public class CameraManager : MonoBehaviour, IManagerBase
 
     int moverID;
 
+    void Awake()
+    {
+        if (cameraObject == null)
+        {
+            cameraObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        }
+
+        Instance = this;
+    }
+
     public void AwakeInitialize()
     {
         if (cameraObject == null)

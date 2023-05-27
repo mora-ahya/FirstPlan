@@ -21,8 +21,9 @@ public class TDDTest : MonoBehaviour, IMenuFrameHolder
         player.Initialize(board, 0);
 
         BoardManager.Instance.SetBoard(board);
-        menuFrame.Initialize(1, 5);
         menuFrame.SetMenuFrameHolder(this);
+        menuFrame.Initialize(3, 5);
+
     }
 
     // Update is called once per frame
@@ -30,6 +31,10 @@ public class TDDTest : MonoBehaviour, IMenuFrameHolder
     {
         //Debug.Log(board.CheckObjectExisting(3));
         //menuFrame.ScrollElements(true);
+        if (Input.GetKeyDown(KeyCode.K))
+        {
+            menuFrame.Initialize(2, 5);
+        }
     }
 
     public void SetContent(int num, GameObject gameObject)

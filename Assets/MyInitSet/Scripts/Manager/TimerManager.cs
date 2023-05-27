@@ -121,14 +121,14 @@ public class TimerManager : MonoBehaviour, IManagerBase
         }
     }
 
-    Dictionary<int, Timer> timerDictionary = new Dictionary<int, Timer>();
-    List<Timer> inactiveTimerList = new List<Timer>();
-    List<Timer> tmpTimerList = new List<Timer>();
+    readonly Dictionary<int, Timer> timerDictionary = new Dictionary<int, Timer>();
+    readonly List<Timer> inactiveTimerList = new List<Timer>();
+    readonly List<Timer> tmpTimerList = new List<Timer>();
 
     int timerNums = 1;
 
     public int ActPriority { get; } = 0;
-    public void AwakeInitialize()
+    void Awake()
     {
         if (Instance != null && Instance != this)
         {
@@ -141,6 +141,11 @@ public class TimerManager : MonoBehaviour, IManagerBase
         timerDictionary.Clear();
         inactiveTimerList.Clear();
         tmpTimerList.Clear();
+    }
+
+    public void AwakeInitialize()
+    {
+        
     }
 
     public void LateAwakeInitialize()

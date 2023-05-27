@@ -19,6 +19,8 @@ public interface IMenuContent
 // 要素は縦か横の一時配列にして、数を増やす場合は再帰的に処理するようにしたい
 public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler, IDragHandler, IScrollHandler
 {
+    public int CurrentTopLeftNum { get; private set; } = 0;
+
     float paddingX = 10.0f;
     float paddingY = 5.0f;
     int widthElementNum;
@@ -31,12 +33,11 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
 
     IMenuFrameHolder holder;
 
-    readonly List<GameObject> elements = new List<GameObject>();
+    int usedElementCount = 1;
+    readonly List<RectTransform> elements = new List<RectTransform>();
 
     //[SerializeField] List<GameObject> testElements = new List<GameObject>();
     GameObject elementsMaster;
-
-    int currentTopNum = 0;
 
 
     int moveID = 0;
@@ -48,45 +49,104 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
         onEndScroll = OnEndScroll;
         elementsMaster = transform.Find("ElementMaster").gameObject;
         GameObject tmp = elementsMaster.transform.Find("Element").gameObject;
-
         if (tmp != null)
         {
-            elements.Add(tmp);
+            RectTransform tmp2 = tmp.GetComponent<RectTransform>();
+            if (tmp2 != null)
+            {
+                elementWidth = tmp2.sizeDelta.x;
+                elementHeight = tmp2.sizeDelta.y;
+                elements.Add(tmp2);
+            }
         }
     }
 
     // 同じContentなら自由に使いまわしできるようにしたい、elements配列のメモリ節約的な追加を実装する
     public void Initialize(int widthEleNum, int heightEleNum, float eleWidthOffset = 0.0f, float eleHeightOffset = 0.0f)
     {
-        RectTransform firstElement = elements[0].GetComponent<RectTransform>();
+        CurrentTopLeftNum = 0;
+        usedElementCount = widthEleNum * (heightEleNum + 2);
+        if (elements.Capacity < usedElementCount)
+        {
+            elements.Capacity = usedElementCount;
+        }
+        elementsMaster.transform.localPosition = Vector3.zero;
 
         widthElementNum = widthEleNum;
-        elementWidth = firstElement.sizeDelta.x;
         elementWidthOffset = eleWidthOffset;
 
         heightElementNum = heightEleNum;
-        elementHeight = firstElement.sizeDelta.y;
         elementHeightOffset = eleHeightOffset;
 
         RectTransform rectTransform = GetComponent<RectTransform>();
         rectTransform.sizeDelta = new Vector2(widthElementNum * (elementWidth + elementWidthOffset) + paddingX * 2.0f, heightElementNum * (elementHeight + elementHeightOffset) + paddingY * 2.0f);
 
-        firstElement.localPosition = new Vector3((-rectTransform.sizeDelta.x + elementWidth) / 2.0f + paddingX, (rectTransform.sizeDelta.y - elementHeight) / 2.0f - paddingY, 0.0f);
+        UpdateMenuFrame();
+    }
 
-        Vector3 diffVec = new Vector3(0.0f, elementHeight + eleHeightOffset, 0.0f);
-        RectTransform create;
+    void UpdateMenuFrame()
+    {
+        RectTransform rectTransform = GetComponent<RectTransform>();
+        Vector3 topLeftPos = new Vector3((-rectTransform.sizeDelta.x + elementWidth) / 2.0f + paddingX, (rectTransform.sizeDelta.y - elementHeight) / 2.0f - paddingY, 0.0f);
+        Vector3 wDiffVec = new Vector3(elementWidth + elementWidthOffset, 0.0f, 0.0f);
+        Vector3 hDiffVec = new Vector3(0.0f, elementHeight + elementHeightOffset, 0.0f);
 
-        for (int i = 0; i < heightEleNum; i++)
+        for (int i = 0; i < usedElementCount; i++)
         {
-            create = Instantiate(firstElement, elementsMaster.transform);
-            create.localPosition = firstElement.localPosition - diffVec * (i + 1);
-            elements.Add(create.gameObject);
+            int hNum = i / widthElementNum;
+            int wNum = i % widthElementNum;
+
+            rectTransform = GetOrCreateElement((i + CurrentTopLeftNum) % usedElementCount);
+
+            if (i < usedElementCount - widthElementNum)
+            {
+                rectTransform.localPosition = topLeftPos + wDiffVec * wNum - hDiffVec * hNum;
+                holder?.SetContent(i + CurrentTopLeftNum, rectTransform.gameObject);
+            }
+            else
+            {
+                rectTransform.localPosition = topLeftPos + wDiffVec * wNum + hDiffVec;
+                holder?.SetContent(CurrentTopLeftNum + wNum - widthElementNum, rectTransform.gameObject);
+            }
         }
 
-        create = Instantiate(firstElement, elementsMaster.transform);
-        create.localPosition = firstElement.localPosition + diffVec;
+        for (int wNum = usedElementCount; wNum < elements.Count; wNum++)
+        {
+            elements[wNum].gameObject.SetActive(false);
+        }
+    }
 
-        elements.Add(create.gameObject);
+    RectTransform GetOrCreateElement(int num)
+    {
+        if (num < 0 || usedElementCount <= num)
+        {
+            return null;
+        }
+        else if (elements.Count <= num)
+        {
+            RectTransform tmp = null;
+
+            while (elements.Count <= num)
+            {
+                tmp = Instantiate(elements[0], elementsMaster.transform);
+                elements.Add(tmp);
+            }
+
+            return tmp;
+        }
+        else
+        {
+            return elements[num];
+        }
+    }
+
+    public void SetCurrentTopLeftNum(int num)
+    {
+        if (num < 0 || num > usedElementCount)
+        {
+            return;
+        }
+        usedElementCount = num / widthElementNum - num % widthElementNum;
     }
 
     public void SetMenuFrameHolder(IMenuFrameHolder menuFrameHolder)
@@ -104,9 +164,9 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
 
     void OnEndScroll(int timerID)
     {
-        int topElementNum = currentTopNum % elements.Count;
-        int elementNum1 = (topElementNum + elements.Count - 1) % elements.Count;
-        int elementNum2 = (elementNum1 + elements.Count - 1) % elements.Count;
+        int topElementNum = CurrentTopLeftNum % usedElementCount;
+        int elementNum1 = (topElementNum + usedElementCount - widthElementNum) % usedElementCount;
+        int elementNum2 = (elementNum1 + usedElementCount - widthElementNum) % usedElementCount;
         int dir = 1;
 
         if (isUp == false)
@@ -117,12 +177,13 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
             dir = -1;
         }
 
-        elements[elementNum1].transform.position = elements[elementNum2].transform.position - new Vector3(0.0f, 20.0f, 0.0f) * dir;
-        holder.SetContent(currentTopNum + (dir == 1 ? elements.Count : -1), elements[elementNum1].gameObject);
+        for (int i = 0; i < widthElementNum; i++)
+        {
+            elements[elementNum1 + i].transform.position = elements[elementNum2 + i].transform.position - new Vector3(0.0f, 20.0f, 0.0f) * dir;
+            holder.SetContent(CurrentTopLeftNum + i - widthElementNum + (dir == 1 ? usedElementCount : -widthElementNum), elements[elementNum1 + i].gameObject);
+        }
 
-        currentTopNum += dir;
-
-        // ondisplay
+        CurrentTopLeftNum += dir * widthElementNum;
     }
 
     public void OnPointerClick(PointerEventData eventData)
