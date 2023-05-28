@@ -5,6 +5,7 @@ using UnityEngine.EventSystems;
 
 public interface IMenuFrameHolder
 {
+    public int NumOfContent { get; }
     public void SetContent(int num, GameObject gameObject);
     public void OnClicked(int num, PointerEventData eventData);
 }
@@ -14,12 +15,13 @@ public interface IMenuContent
     public void OnDisplay();
 }
 
-// スクロールに対応
 // 各要素のアクティブ、非アクティブに対応する
 // 要素は縦か横の一時配列にして、数を増やす場合は再帰的に処理するようにしたい
 public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler, IDragHandler, IScrollHandler
 {
     public int CurrentTopLeftNum { get; private set; } = 0;
+
+    RectTransform selfRectTransform;
 
     float paddingX = 10.0f;
     float paddingY = 5.0f;
@@ -46,6 +48,7 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
 
     void Awake()
     {
+        selfRectTransform = GetComponent<RectTransform>();
         onEndScroll = OnEndScroll;
         elementsMaster = transform.Find("ElementMaster").gameObject;
         GameObject tmp = elementsMaster.transform.Find("Element").gameObject;
@@ -78,16 +81,14 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
         heightElementNum = heightEleNum;
         elementHeightOffset = eleHeightOffset;
 
-        RectTransform rectTransform = GetComponent<RectTransform>();
-        rectTransform.sizeDelta = new Vector2(widthElementNum * (elementWidth + elementWidthOffset) + paddingX * 2.0f, heightElementNum * (elementHeight + elementHeightOffset) + paddingY * 2.0f);
+        selfRectTransform.sizeDelta = new Vector2(widthElementNum * (elementWidth + elementWidthOffset) + paddingX * 2.0f, heightElementNum * (elementHeight + elementHeightOffset) + paddingY * 2.0f);
 
         UpdateMenuFrame();
     }
 
     void UpdateMenuFrame()
     {
-        RectTransform rectTransform = GetComponent<RectTransform>();
-        Vector3 topLeftPos = new Vector3((-rectTransform.sizeDelta.x + elementWidth) / 2.0f + paddingX, (rectTransform.sizeDelta.y - elementHeight) / 2.0f - paddingY, 0.0f);
+        Vector3 topLeftPos = new Vector3((-selfRectTransform.sizeDelta.x + elementWidth) / 2.0f + paddingX, (selfRectTransform.sizeDelta.y - elementHeight) / 2.0f - paddingY, 0.0f);
         Vector3 wDiffVec = new Vector3(elementWidth + elementWidthOffset, 0.0f, 0.0f);
         Vector3 hDiffVec = new Vector3(0.0f, elementHeight + elementHeightOffset, 0.0f);
 
@@ -96,7 +97,7 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
             int hNum = i / widthElementNum;
             int wNum = i % widthElementNum;
 
-            rectTransform = GetOrCreateElement((i + CurrentTopLeftNum) % usedElementCount);
+            RectTransform rectTransform = GetOrCreateElement((i + CurrentTopLeftNum) % usedElementCount);
 
             if (i < usedElementCount - widthElementNum)
             {
@@ -157,6 +158,12 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
     public void ScrollElements(bool isUp)
     {
         Mover.EndMove(moveID);
+
+        if (holder == null || CurrentTopLeftNum == 0 && isUp == false || CurrentTopLeftNum + (widthElementNum * heightElementNum) > holder.NumOfContent && isUp)
+        {
+            return;
+        }
+
         this.isUp = isUp;
         float dir = isUp ? 1.0f : -1.0f;
         moveID = Mover.StartMove(elementsMaster, elementsMaster.transform.position + new Vector3(0.0f, 20.0f, 0.0f) * dir, 0.15f, endProcess: onEndScroll);
@@ -188,10 +195,42 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        holder?.OnClicked(0, eventData);
+        if (isDrag)
+        {
+            isDrag = false;
+            return;
+        }
+
+        int eleNum = GetPressElementNum(eventData.pressPosition);
+
+        if (eleNum < 0 || eleNum > widthElementNum * heightElementNum || eleNum != GetPressElementNum(eventData.position))
+        {
+            return;
+        }
+
+        holder?.OnClicked(eleNum + CurrentTopLeftNum, eventData);
+    }
+
+    int GetPressElementNum(Vector2 pos)
+    {
+        Vector2 topLeft = selfRectTransform.position;
+        topLeft.x -= selfRectTransform.sizeDelta.x / 2.0f - paddingX;
+        topLeft.y += selfRectTransform.sizeDelta.y / 2.0f - paddingY;
+
+        topLeft = pos - topLeft;
+
+        if (topLeft.x < 0.0f || topLeft.x > selfRectTransform.sizeDelta.x - paddingX * 2.0f || topLeft.y > 0.0f || topLeft.y < -(selfRectTransform.sizeDelta.y - paddingY * 2.0f))
+        {
+            return -1;
+        }
+
+        topLeft.y = Mathf.Abs(topLeft.y);
+
+        return Mathf.FloorToInt(topLeft.x / (elementWidth + elementWidthOffset)) + Mathf.FloorToInt(topLeft.y / (elementHeight + elementHeightOffset)) * widthElementNum;
     }
 
     Vector2 beginDragPos;
+    bool isDrag;
 
     public void OnBeginDrag(PointerEventData eventData)
     {
@@ -207,6 +246,7 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
         }
 
         beginDragPos = eventData.position;
+        isDrag = true;
         ScrollElements(diff > 0.0f);
     }
 

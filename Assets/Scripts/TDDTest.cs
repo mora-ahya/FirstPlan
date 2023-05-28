@@ -37,6 +37,7 @@ public class TDDTest : MonoBehaviour, IMenuFrameHolder
         }
     }
 
+    public int NumOfContent { get; private set; } = 36;
     public void SetContent(int num, GameObject gameObject)
     {
         TestMenuElement tmp = gameObject.GetComponent<TestMenuElement>();
