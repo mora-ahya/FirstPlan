@@ -10,13 +10,6 @@ public interface IMenuFrameHolder
     public void OnClicked(int num, PointerEventData eventData);
 }
 
-public interface IMenuContent
-{
-    public void OnDisplay();
-}
-
-// 各要素のアクティブ、非アクティブに対応する
-// 要素は縦か横の一時配列にして、数を増やす場合は再帰的に処理するようにしたい
 public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler, IDragHandler, IScrollHandler
 {
     public int CurrentTopLeftNum { get; private set; } = 0;
@@ -37,8 +30,6 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
 
     int usedElementCount = 1;
     readonly List<RectTransform> elements = new List<RectTransform>();
-
-    //[SerializeField] List<GameObject> testElements = new List<GameObject>();
     GameObject elementsMaster;
 
 
@@ -46,27 +37,27 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
     bool isUp;
     TimerManager.TimerOnceEventHandler onEndScroll;
 
-    void Awake()
+    // 同じContentなら自由に使いまわしできるようにしたい、elements配列のメモリ節約的な追加を実装する
+    public void SetUp(int widthEleNum, int heightEleNum, float eleWidthOffset = 0.0f, float eleHeightOffset = 0.0f)
     {
-        selfRectTransform = GetComponent<RectTransform>();
-        onEndScroll = OnEndScroll;
-        elementsMaster = transform.Find("ElementMaster").gameObject;
-        GameObject tmp = elementsMaster.transform.Find("Element").gameObject;
-        if (tmp != null)
+        if (selfRectTransform == null)
         {
-            RectTransform tmp2 = tmp.GetComponent<RectTransform>();
-            if (tmp2 != null)
+            selfRectTransform = GetComponent<RectTransform>();
+            onEndScroll = OnEndScroll;
+            elementsMaster = transform.Find("ElementMaster").gameObject;
+            GameObject tmp = elementsMaster.transform.Find("Element").gameObject;
+            if (tmp != null)
             {
-                elementWidth = tmp2.sizeDelta.x;
-                elementHeight = tmp2.sizeDelta.y;
-                elements.Add(tmp2);
+                RectTransform tmp2 = tmp.GetComponent<RectTransform>();
+                if (tmp2 != null)
+                {
+                    elementWidth = tmp2.sizeDelta.x;
+                    elementHeight = tmp2.sizeDelta.y;
+                    elements.Add(tmp2);
+                }
             }
         }
-    }
 
-    // 同じContentなら自由に使いまわしできるようにしたい、elements配列のメモリ節約的な追加を実装する
-    public void Initialize(int widthEleNum, int heightEleNum, float eleWidthOffset = 0.0f, float eleHeightOffset = 0.0f)
-    {
         CurrentTopLeftNum = 0;
         usedElementCount = widthEleNum * (heightEleNum + 2);
         if (elements.Capacity < usedElementCount)
@@ -159,14 +150,14 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
     {
         Mover.EndMove(moveID);
 
-        if (holder == null || CurrentTopLeftNum == 0 && isUp == false || CurrentTopLeftNum + (widthElementNum * heightElementNum) > holder.NumOfContent && isUp)
+        if (holder == null || CurrentTopLeftNum == 0 && isUp == false || CurrentTopLeftNum + (widthElementNum * heightElementNum) >= holder.NumOfContent && isUp)
         {
             return;
         }
 
         this.isUp = isUp;
         float dir = isUp ? 1.0f : -1.0f;
-        moveID = Mover.StartMove(elementsMaster, elementsMaster.transform.position + new Vector3(0.0f, 20.0f, 0.0f) * dir, 0.15f, endProcess: onEndScroll);
+        moveID = Mover.StartMove(elementsMaster, elementsMaster.transform.position + new Vector3(0.0f, elementHeight, 0.0f) * dir, 0.15f, endProcess: onEndScroll);
     }
 
     void OnEndScroll(int timerID)
@@ -186,7 +177,7 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
 
         for (int i = 0; i < widthElementNum; i++)
         {
-            elements[elementNum1 + i].transform.position = elements[elementNum2 + i].transform.position - new Vector3(0.0f, 20.0f, 0.0f) * dir;
+            elements[elementNum1 + i].transform.position = elements[elementNum2 + i].transform.position - new Vector3(0.0f, elementHeight, 0.0f) * dir;
             holder.SetContent(CurrentTopLeftNum + i - widthElementNum + (dir == 1 ? usedElementCount : -widthElementNum), elements[elementNum1 + i].gameObject);
         }
 
