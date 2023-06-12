@@ -54,11 +54,13 @@ public interface IBoardManager
 
 }
 
-public class BoardManager : MonoBehaviour
+public class BoardManager : MonoBehaviour//, IFourDirectionInputReceiver
 {
     public static BoardManager Instance { get; private set; }
 
     public Board CurrentBoard { get; private set; }
+
+    PlayerOnBoard controllingCharacter;
 
     void Awake()
     {
@@ -69,4 +71,9 @@ public class BoardManager : MonoBehaviour
     {
         CurrentBoard = board;
     }
+
+    //public virtual void OnPressDirectionButton(int dir)
+    //{
+
+    //}
 }

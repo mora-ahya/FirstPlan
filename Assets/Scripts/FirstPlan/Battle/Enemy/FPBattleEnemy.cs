@@ -19,12 +19,24 @@ public struct EnemyStatus
     public int Speed;
 }
 
+// statusUI•\Ž¦‚ÍŽb’è“I‚Èì¬AŒã’ö‘Î‰ž
 public class FPBattleEnemy : FPBattleCharacter, ITurnBasedBattlerBase
 {
+    public enum StatusKind
+    {
+        Name,
+        Hp,
+        Attack,
+        Defense,
+        Speed,
+        Max,
+    }
+
+    public string Name => enemyConfig == null ? string.Empty : enemyConfig.Name;
 
     EnemyConfig enemyConfig;
 
-    [SerializeField]Image image;
+    [SerializeField] Image image;
 
     public void SetConfig(EnemyConfig config)
     {
@@ -35,6 +47,38 @@ public class FPBattleEnemy : FPBattleCharacter, ITurnBasedBattlerBase
         status.Offense = config.Attack;
         status.Defense = config.Defence;
         status.Speed = config.Speed;
+        changedStatusFlag = (1 << (int)StatusKind.Max) - 1;
+    }
+
+    public override string GetUpdateableTextString(int num, GameObject gObject)
+    {
+        changedStatusFlag &= ~(1 << num);
+        return GetStatusString(num);
+    }
+
+    string GetStatusString(int num)
+    {
+        switch (StatusKind.Name + num)
+        {
+            case StatusKind.Name:
+                return Name;
+            case StatusKind.Hp:
+                return status.Hp.ToString();
+            case StatusKind.Attack:
+                return status.Offense.ToString();
+            case StatusKind.Defense:
+                return status.Defense.ToString();
+            case StatusKind.Speed:
+                return status.Speed.ToString();
+            default:
+                return string.Empty;
+        }
+    }
+
+    public override void OnDamage(int amount)
+    {
+        base.OnDamage(amount);
+        changedStatusFlag |= 1 << (int)StatusKind.Hp;
     }
 
     #region ITurnBasedBattlerBase Enemy

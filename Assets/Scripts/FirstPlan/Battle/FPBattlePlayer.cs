@@ -4,8 +4,19 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
+// statusUI•\¦‚Íb’è“I‚Èì¬AŒã’ö‘Î‰
 public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBasedBattlerBase
 {
+    public enum StatusKind
+    {
+        MaxHp,
+        Hp,
+        Attack,
+        Defense,
+        Speed,
+        Max,
+    }
+
     int maxHP;
 
     public void Initialize()
@@ -16,6 +27,7 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBas
         status.Offense = 3;
         status.Defense = 3;
         status.Speed = 3;
+        changedStatusFlag = (1 << (int)StatusKind.Max) - 1;
     }
 
     public void SetCommand(Command playerCommand)
@@ -34,11 +46,41 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBas
         // ˆê•à‰º‚ª‚é
     }
 
+    public override void OnDamage(int amount)
+    {
+        base.OnDamage(amount);
+        changedStatusFlag |= 1 << (int)StatusKind.Hp;
+    }
+
     public string GetSkillInfo(int num)
     {
         return "‹Z" + num;
     }
 
+    public override string GetUpdateableTextString(int num, GameObject gObject)
+    {
+        changedStatusFlag &= ~(1 << num);
+        return GetStatusString(num);
+    }
+
+    string GetStatusString(int num)
+    {
+        switch (StatusKind.MaxHp + num)
+        {
+            case StatusKind.MaxHp:
+                return maxHP.ToString();
+            case StatusKind.Hp:
+                return status.Hp.ToString();
+            case StatusKind.Attack:
+                return status.Offense.ToString();
+            case StatusKind.Defense:
+                return status.Defense.ToString();
+            case StatusKind.Speed:
+                return status.Speed.ToString();
+            default:
+                return string.Empty;
+        }
+    }
 
     #region ITurnBasedPlotterBase
     public bool IsAlreadyDecided { get; protected set; }

@@ -13,6 +13,13 @@ public class FPBattleManager : MonoBehaviour, IManagerBase, ITurnBasedPlottingSy
 {
     public static FPBattleManager Instance { get; private set; }
 
+    static readonly string OpeningString = "{0}　があらわれた";
+    static readonly string AttackString = "{0}　のこうげき";
+    static readonly string SkillString = "{0}　は {1} をつかった";
+    static readonly string RunAwayString = "{0}　にげだした";
+    static readonly string DamageString = "{0}　に{1}のダメージをあたえた";
+    static readonly string DamagedString = "{0}　は{1}のダメージをうけた";
+
     enum Phase
     {
         Opening,
@@ -55,7 +62,7 @@ public class FPBattleManager : MonoBehaviour, IManagerBase, ITurnBasedPlottingSy
     public void SetEnemy(FPBattleEnemy fpBattleEnemy)
     {
         enemy = fpBattleEnemy;
-        battleSystem.AddTurnBasedBattler(fpBattleEnemy);
+        battleUI.SetEnemy(fpBattleEnemy);
     }
 
     public void SetPlayer(FPBattlePlayer player)
@@ -67,9 +74,33 @@ public class FPBattleManager : MonoBehaviour, IManagerBase, ITurnBasedPlottingSy
     {
         // バトルUIの表示
         battleUI.ShowUI(true);
+        battleUI.AddBattleStr(string.Format(OpeningString, enemy.Name));
+        battleUI.ApplyText();
+        battleUI.UpdatePlayerStatusUI();
+        battleUI.UpdateEnemyStatusUI();
+
         isActive = true;
         currentPhase = Phase.Opening;
         battleSystem.AddTurnBasedBattler(player);
+        battleSystem.AddTurnBasedBattler(enemy);
+        plottingSystem.AddPlotter(player);
+    }
+
+    public void StartBattle(int enemyID)
+    {
+        // enemyIDからenemyConfigを取得してenemyにセットする
+
+        // バトルUIの表示
+        battleUI.ShowUI(true);
+        battleUI.AddBattleStr(string.Format(OpeningString, enemy.Name));
+        battleUI.ApplyText();
+        battleUI.UpdatePlayerStatusUI();
+        battleUI.UpdateEnemyStatusUI();
+
+        isActive = true;
+        currentPhase = Phase.Opening;
+        battleSystem.AddTurnBasedBattler(player);
+        battleSystem.AddTurnBasedBattler(enemy);
         plottingSystem.AddPlotter(player);
     }
 
@@ -112,6 +143,9 @@ public class FPBattleManager : MonoBehaviour, IManagerBase, ITurnBasedPlottingSy
         int defense = defender.Defense;
 
         defender.OnDamage(Mathf.Max(offense - defense, 0));
+
+        battleUI.UpdatePlayerStatusUI();
+        battleUI.UpdateEnemyStatusUI();
     }
 
     #region IManagerBase
@@ -144,8 +178,9 @@ public class FPBattleManager : MonoBehaviour, IManagerBase, ITurnBasedPlottingSy
 
     void ActOpening()
     {
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) && battleUI.IsBattleStrsEmpty)
         {
+            battleUI.ClearTexts();
             currentPhase = Phase.Plotting;
             plottingSystem.StartPlotting();
         }

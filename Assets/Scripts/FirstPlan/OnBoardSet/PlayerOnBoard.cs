@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-// 平面のボードを位置マスずつ進めるプレイヤー、InitSet(もしくはOnBoardSet)入りを検討
+// 平面のボードを1マスずつ進めるプレイヤー、InitSet(もしくはOnBoardSet)入りを検討
 
 public class PlayerOnBoard : MonoBehaviour, IFourDirectionInputReceiver, IObjectOnBoard
 {
@@ -89,6 +89,10 @@ public class PlayerOnBoard : MonoBehaviour, IFourDirectionInputReceiver, IObject
         Board board = BoardManager.Instance.CurrentBoard;
         int eventID = board.GetEventID(PositionNum);
         
+        if (eventID < 0)
+        {
+            return;
+        }
     }
 
     public void Turn(bool isLeft)

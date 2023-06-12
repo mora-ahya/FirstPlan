@@ -6,18 +6,35 @@ using UnityEngine.EventSystems;
 
 public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
 {
+    public bool IsBattleStrsEmpty => battleStrs.Count == 0;
+
     [SerializeField] MenuFrame battleCommand;
+    [SerializeField] Text[] battleTexts;
+    [SerializeField] UpdateableTexts playerStatusUI;
+    [SerializeField] UpdateableTexts enemyStatusUI;
+
+    Queue<string> battleStrs = new Queue<string>();
+
+    int usingTextCount = 0;
 
     FPBattlePlayer player;
 
     void Awake()
     {
         battleCommand.SetMenuFrameHolder(this);
+        usingTextCount = battleTexts.Length;
+        ClearTexts();
     }
 
     public void SetPlayer(FPBattlePlayer p)
     {
         player = p;
+        playerStatusUI.SetUpdateableTextsHandler(p);
+    }
+
+    public void SetEnemy(FPBattleEnemy e)
+    {
+        enemyStatusUI.SetUpdateableTextsHandler(e);
     }
 
     public void ShowUI(bool b)
@@ -35,6 +52,48 @@ public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
     {
         battleCommand.gameObject.SetActive(false);
     }
+
+    public void AddBattleStr(string str)
+    {
+        battleStrs.Enqueue(str);
+    }
+
+    public void ApplyText()
+    {
+        if (battleStrs.Count == 0)
+        {
+            return;
+        }
+
+        if (battleTexts.Length == usingTextCount)
+        {
+            ClearTexts();
+        }
+
+        battleTexts[usingTextCount++].text = battleStrs.Dequeue();
+    }
+
+    public void ClearTexts()
+    {
+        for (int i = 0; i < usingTextCount; i++)
+        {
+            battleTexts[i].text = string.Empty;
+        }
+
+        usingTextCount = 0;
+    }
+
+    #region UpdateableTexts
+    public void UpdatePlayerStatusUI()
+    {
+        playerStatusUI.UpdateTexts();
+    }
+
+    public void UpdateEnemyStatusUI()
+    {
+        enemyStatusUI.UpdateTexts();
+    }
+    #endregion
 
     #region IMenuFrameHolder Implement
 

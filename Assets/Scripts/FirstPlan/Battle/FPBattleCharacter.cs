@@ -20,7 +20,7 @@ public struct Command
     public int SkillNum;
 }
 
-public class FPBattleCharacter : MonoBehaviour
+public class FPBattleCharacter : MonoBehaviour, IUpdateableTextsHandler
 {
     public int CharacterID { get; protected set; }
     public bool IsDead => status.Hp <= 0;
@@ -31,9 +31,20 @@ public class FPBattleCharacter : MonoBehaviour
 
     protected Command command;
 
-    public void OnDamage(int amount)
+    protected int changedStatusFlag = 0;
+
+    public virtual void OnDamage(int amount)
     {
         status.Hp -= amount;
         Debug.Log("" + gameObject + "HP : " + status.Hp);
     }
+
+    #region Implement IUpdateableTextsHandler
+    public int UpdateTextFlag => changedStatusFlag;
+
+    public virtual string GetUpdateableTextString(int num, GameObject gObject)
+    {
+        return null;
+    }
+    #endregion
 }

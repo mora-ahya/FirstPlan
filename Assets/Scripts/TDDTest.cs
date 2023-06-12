@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
 public class TDDTest : MonoBehaviour, IMenuFrameHolder
@@ -24,18 +25,25 @@ public class TDDTest : MonoBehaviour, IMenuFrameHolder
 
         BoardManager.Instance.SetBoard(board);
 
-        EnemyConfig c = new EnemyConfig(10, 4, 1, 1);
+        EnemyConfig c = new EnemyConfig("‚©‚ç‚©‚³‚¨‚Î‚¯", 10, 4, 1, 1);
         
         enemy.SetConfig(c);
         player2.Initialize();
 
-        FPBattleManager.Instance.SetEnemy(enemy);
-        FPBattleManager.Instance.StartBattle();
+        //FPBattleManager.Instance.SetEnemy(enemy);
+        //FPBattleManager.Instance.StartBattle();
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.K))
+        {
+            enemy.SetConfig(new EnemyConfig("‚©‚ç‚©‚³‚¨‚Î‚¯", 10, 4, 1, 1));
+
+            FPBattleManager.Instance.SetEnemy(enemy);
+            FPBattleManager.Instance.StartBattle();
+        }
         //Debug.Log(board.CheckObjectExisting(3));
         //menuFrame.ScrollElements(true);
     }

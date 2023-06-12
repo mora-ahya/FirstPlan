@@ -21,27 +21,112 @@ class BoardPart
     public int[] LinkedPartNumbers = new int[4];
 }
 
+// 使いまわしは考えない
+// gameObjectの名前をそのまま、jsonのファイル名にする
 public class Board : MonoBehaviour
 {
-    public float PartSize { get; } = 1.0f;
+    float partSize = 0.5f;
     int width;
     int height;
     int boardLength;
 
-    List<BoardPart> boardParts = new List<BoardPart>();
+    readonly List<BoardPart> boardParts = new List<BoardPart>();
     GameObject basePosition;
 
-    List<IObjectOnBoard> objectsOnBoard = new List<IObjectOnBoard>();
+    readonly List<IObjectOnBoard> objectsOnBoard = new List<IObjectOnBoard>();
+
+    readonly Dictionary<int, IGameEventConfig> boardEvents = new Dictionary<int, IGameEventConfig>();
+
+    public void Initialize(string dataPath)
+    {
+        basePosition = transform.Find("BasePosition").gameObject;
+        LoadBoard(dataPath);
+
+        Transform eventObjectParent = basePosition.transform.Find("EventObjectParent");
+
+        for (int i = 0; i < eventObjectParent.childCount; i++)
+        {
+            GameObject gObject = eventObjectParent.GetChild(i).gameObject;
+            IGameEventConfig gameEventConfig = gObject.GetComponent<IGameEventConfig>();
+            if (gameEventConfig != null)
+            {
+                boardEvents.Add(GetPartNumFromLocalPosition(gObject.transform.localPosition), gameEventConfig);
+            }
+        }
+    }
+
+    public void InitializeDefault()
+    {
+        basePosition = transform.Find("BasePosition").gameObject;
+
+        SetSize(11, 14);
+
+        for (int i = 0; i < boardLength; i++)
+        {
+            BoardPart tmp = new BoardPart();
+            tmp.Number = i;
+            tmp.HavingEventID = -1;
+
+            for (int j = 0; j < 4; j++)
+            {
+                boardParts[i].LinkedPartNumbers[j] = GetNextPartNumber(i, DirectionClass.DirectionEnum.Forward + j);
+            }
+
+            boardParts.Add(tmp);
+        }
+    }
+
+    void SetSize(int w = 11, int h = 14)
+    {
+        if (w == 0)
+        {
+            w = 1;
+        }
+        if (h == 0)
+        {
+            h = 1;
+        }
+
+        width = w;
+        height = h;
+
+        boardLength = width * height;
+        boardParts.Capacity = boardLength;
+    }
 
     public virtual Vector3 GetPartPosition(int partNum)
     {
-        return new Vector3((partNum % width + 0.5f) * PartSize, 0f, (partNum / width + 0.5f) * PartSize) + basePosition.transform.position;
+        return new Vector3((partNum % width + 0.5f) * partSize, 0f, (partNum / width + 0.5f) * partSize) + basePosition.transform.position;
     }
 
     public virtual void GetPartPosition(int partNum, ref Vector3 dest)
     {
-        dest.Set((partNum % width + 0.5f) * PartSize, 0f, (partNum / width + 0.5f) * PartSize);
+        dest.Set((partNum % width + 0.5f) * partSize, 0f, (partNum / width + 0.5f) * partSize);
         dest += basePosition.transform.position;
+    }
+
+    public virtual int GetPartNumFromWorldPosition(in Vector3 pos)
+    {
+        return GetPartNumFromLocalPosition(pos - basePosition.transform.position);
+    }
+
+    public virtual int GetPartNumFromLocalPosition(in Vector3 pos)
+    {
+        int w = (int)(pos.x / partSize);
+
+        if (w > width)
+        {
+            return -1;
+        }
+
+        int h = (int)(pos.z / partSize);
+
+        if (h > height)
+        {
+            return -1;
+        }
+
+        return w + h * width;
     }
 
     public virtual int ManhattanDistance(int partNum1, int partNum2)
@@ -127,161 +212,6 @@ public class Board : MonoBehaviour
         return boardParts[partNum].HavingEventID;
     }
 
-    public virtual void Initialize(string dataPath)
-    {
-        basePosition = transform.Find("BasePosition").gameObject;
-        LoadBoard(dataPath);
-        GenerateWalls();
-    }
-
-    public void InitializeDefault()
-    {
-        basePosition = transform.Find("BasePosition").gameObject;
-
-        Resize(11, 14);
-
-        for (int i = 0; i < boardLength; i++)
-        {
-            for (int j = 0; j < 4; j++)
-            {
-                boardParts[i].LinkedPartNumbers[j] = GetNextPartNumber(i, DirectionClass.DirectionEnum.Forward + j);
-            }
-        }
-
-        GenerateWalls();
-    }
-
-    void GenerateWalls()
-    {
-        GameObject wall = GenerateWall(0, width - 1, true);
-        Vector3 tmp = wall.transform.position;
-        tmp.z = basePosition.transform.position.z;
-        wall.transform.position = tmp;
-
-        wall = GenerateWall(0, width - 1, true);
-        tmp.z += height * PartSize;
-        wall.transform.position = tmp;
-
-        wall = GenerateWall(0, width * (height - 1), false);
-        tmp = wall.transform.position;
-        tmp.x = basePosition.transform.position.x;
-        wall.transform.position = tmp;
-
-        wall = GenerateWall(0, width * (height - 1), false);
-        tmp.x += (width - 1) + PartSize;
-        wall.transform.position = tmp;
-
-        for (int i = 0; i < height - 1; i++)
-        {
-            int startWall = -1;
-            for (int j = 0; j < width; j++)
-            {
-                int num = i * width + j;
-                if (boardParts[num].LinkedPartNumbers[0] == -1)
-                {
-                    if (startWall == -1)
-                    {
-                        startWall = num;
-                    }
-                }
-                else
-                {
-                    if (startWall != -1)
-                    {
-                        GenerateWall(startWall, num - 1, true);
-                        startWall = -1;
-                    }
-                }
-            }
-
-            if (startWall != -1)
-            {
-                GenerateWall(startWall, (i + 1) * width - 1, true);
-            }
-        }
-
-        for (int i = 0; i < width - 1; i++)
-        {
-            int startWall = -1;
-            for (int j = 0; j < height; j++)
-            {
-                int num = i + j * width;
-                if (boardParts[num].LinkedPartNumbers[1] == -1)
-                {
-                    if (startWall == -1)
-                    {
-                        startWall = num;
-                    }
-                }
-                else
-                {
-                    if (startWall != -1)
-                    {
-                        GenerateWall(startWall, num - width, false);
-                        startWall = -1;
-                    }
-                }
-            }
-
-            if (startWall != -1)
-            {
-                GenerateWall(startWall, width * (height - 1) + i, false);
-            }
-        }
-    }
-
-    GameObject GenerateWall(int startNum, int endNum, bool isHorizon)
-    {
-        Vector3 wallOffset;
-        Vector3 wallScale;
-
-        if (isHorizon)
-        {
-            wallOffset = new Vector3(0.0f, 0.5f, PartSize * 0.5f);
-            wallScale = new Vector3(PartSize * (endNum - startNum + 1), 1.0f, PartSize / 10.0f);
-        }
-        else
-        {
-            wallOffset = new Vector3(PartSize * 0.5f, 0.5f, 0.0f);
-            wallScale = new Vector3(PartSize / 10.0f, 1.0f, PartSize * ((endNum - startNum) / width + 1));
-        }
-
-        GameObject wall = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        wall.transform.position = (GetPartPosition(startNum) + GetPartPosition(endNum)) / 2.0f + wallOffset;
-        wall.transform.localScale = wallScale;
-        wall.transform.parent = transform;
-
-        return wall;
-    }
-
-    public void Resize(int w = 11, int h = 14)
-    {
-        if (w == 0)
-        {
-            w = 1;
-        }
-        if (h == 0)
-        {
-            h = 1;
-        }
-
-        width = w;
-        height = h;
-        boardLength = width * height;
-
-        if (boardParts.Capacity < boardLength)
-        {
-            boardParts.Capacity = boardLength;
-        }
-
-        for (int i = boardParts.Count; i < boardLength; i++)
-        {
-            BoardPart tmp = new BoardPart();
-            tmp.Number = i;
-            boardParts.Add(tmp);
-        }
-    }
-
     public virtual void PutOnBoard(int partNum, IObjectOnBoard objectOnBoard)
     {
         if (partNum < 0 || boardLength < partNum)
@@ -361,12 +291,18 @@ public class Board : MonoBehaviour
             reader = new StreamReader(dataPath);
 
             BoardSize boardSize = JsonUtility.FromJson<BoardSize>(reader.ReadLine());
-            Resize(boardSize.width, boardSize.height);
+
+            SetSize(boardSize.width, boardSize.height);
 
             for (int i = 0; i < boardLength; i++)
             {
+                BoardPart tmp = new BoardPart();
+                tmp.Number = i;
+
                 BoardPartJson partTmp = JsonUtility.FromJson<BoardPartJson>(reader.ReadLine());
-                partTmp.ToBoardPart(boardParts[i]);
+                partTmp.ToBoardPart(tmp);
+
+                boardParts.Add(tmp);
             }
         }
         finally

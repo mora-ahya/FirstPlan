@@ -5,6 +5,7 @@ using UnityEngine.UI;
 
 public interface IUpdateableTextsHandler
 {
+    public int UpdateTextFlag { get; }
     public string GetUpdateableTextString(int num, GameObject gObject);
 }
 
@@ -35,13 +36,18 @@ public class UpdateableTexts : MonoBehaviour
 
     public void UpdateTexts()
     {
-        if (updateableTextsHandler == null)
+        if (updateableTextsHandler == null || updateableTextsHandler.UpdateTextFlag == 0)
         {
             return;
         }
 
         for (int i = 0; i < texts.Count; i++)
         {
+            if ((updateableTextsHandler.UpdateTextFlag & (1 << i)) == 0)
+            {
+                continue;
+            }
+
             string tmp = updateableTextsHandler.GetUpdateableTextString(i, texts[i].gameObject);
             if (tmp == null)
             {
