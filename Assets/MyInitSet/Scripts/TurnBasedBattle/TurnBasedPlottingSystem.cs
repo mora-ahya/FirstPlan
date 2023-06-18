@@ -14,7 +14,7 @@ public interface ITurnBasedPlottingSystemEventReceiver
     public void OnEndAllPlotting();
 }
 
-public class TurnBasedPlottingSystem : IManagerBase
+public class TurnBasedPlottingSystem
 {
     readonly List<ITurnBasedPlotterBase> plotters = new List<ITurnBasedPlotterBase>();
     ITurnBasedPlottingSystemEventReceiver eventReceiver;
@@ -57,8 +57,6 @@ public class TurnBasedPlottingSystem : IManagerBase
         }
     }
 
-    #region IManagerBase
-    public int ActPriority { get; } = 0;
     public void Act()
     {
         if (isPlotting == false)
@@ -82,5 +80,4 @@ public class TurnBasedPlottingSystem : IManagerBase
             }
         }
     }
-    #endregion
 }

@@ -138,7 +138,7 @@ public class BoardMaker : MonoBehaviour
         wall.GetComponent<WallConfig>().enabled = false;
 
         wall = GenerateWall(0, width * (height - 1), false, parent.transform);
-        tmp.x += (width - 1) + PartSize;
+        tmp.x += width * PartSize;
         wall.transform.position = tmp;
         wall.GetComponent<WallConfig>().enabled = false;
 

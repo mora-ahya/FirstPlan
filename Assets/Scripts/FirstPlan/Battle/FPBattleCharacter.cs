@@ -22,7 +22,16 @@ public struct Command
 
 public class FPBattleCharacter : MonoBehaviour, IUpdateableTextsHandler
 {
+    protected static FPBattleManager BattleManager;
+
+    public static void SetBattleManager(FPBattleManager bm)
+    {
+        BattleManager = bm;
+    }
+
     public int CharacterID { get; protected set; }
+    public bool IsOutOfBattle => IsRunningAway || IsDead;
+    public bool IsRunningAway { get; protected set; }
     public bool IsDead => status.Hp <= 0;
     public int Offense => status.Offense;
     public int Defense => status.Defense;

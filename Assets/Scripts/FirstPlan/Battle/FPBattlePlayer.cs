@@ -87,7 +87,7 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBas
     public void OnStartPlotting()
     {
         IsAlreadyDecided = false;
-        FPBattleManager.Instance.StartPlotting();
+        BattleManager.StartPlotting();
     }
 
     public void OnEndPlotting()
@@ -118,7 +118,12 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBas
     public void OnStartProcessingCommand()
     {
         IsEndBattleProcess = false;
-        FPBattleManager.Instance.ApplyCommand(command);
+
+        if (IsDead == false)
+        {
+            BattleManager.ApplyCommand(command);
+        }
+        
         IsEndBattleProcess = true;
     }
 

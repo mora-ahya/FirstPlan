@@ -9,10 +9,9 @@ public interface IDamageable
     
 }
 
-public class FPBattleManager : MonoBehaviour, IManagerBase, ITurnBasedPlottingSystemEventReceiver, ITurnBasedBattleSystemEventReceiver
+// バトル開始をイベント由来にする
+public class FPBattleManager : MonoBehaviour, MyInitSet.ISceneActable, IFPGameSceneChild, ITurnBasedPlottingSystemEventReceiver, ITurnBasedBattleSystemEventReceiver
 {
-    public static FPBattleManager Instance { get; private set; }
-
     static readonly string OpeningString = "{0}　があらわれた";
     static readonly string AttackString = "{0}　のこうげき";
     static readonly string SkillString = "{0}　は {1} をつかった";
@@ -36,59 +35,33 @@ public class FPBattleManager : MonoBehaviour, IManagerBase, ITurnBasedPlottingSy
     readonly TurnBasedBattleSystem battleSystem = new TurnBasedBattleSystem();
     readonly TurnBasedPlottingSystem plottingSystem = new TurnBasedPlottingSystem();
 
+    FPGameScene gameScene;
+
     [SerializeField] FPBattleUI battleUI;
     [SerializeField] FPBattlePlayer player;
-    FPBattleEnemy enemy;
+    [SerializeField] FPBattleEnemy enemy;
+
+    FPBattleEventConfig holdingEvent;
 
     void Awake()
     {
-        if (Instance != null)
-        {
-            Destroy(this);
-            return;
-        }
-
-        Instance = this;
-
         battleUI.SetPlayer(player);
+        battleUI.SetEnemy(enemy);
 
         plottingSystem.SetEventReceiver(this);
         battleSystem.SetEventReceiver(this);
-
-        ManagerParent.Instance.AddManager(plottingSystem);
-        ManagerParent.Instance.AddManager(battleSystem);
     }
 
-    public void SetEnemy(FPBattleEnemy fpBattleEnemy)
+    public void SetScene(FPGameScene gScene)
     {
-        enemy = fpBattleEnemy;
-        battleUI.SetEnemy(fpBattleEnemy);
+        gameScene = gScene;
     }
 
-    public void SetPlayer(FPBattlePlayer player)
-    {
-        this.player = player;
-    }
-
-    public void StartBattle()
-    {
-        // バトルUIの表示
-        battleUI.ShowUI(true);
-        battleUI.AddBattleStr(string.Format(OpeningString, enemy.Name));
-        battleUI.ApplyText();
-        battleUI.UpdatePlayerStatusUI();
-        battleUI.UpdateEnemyStatusUI();
-
-        isActive = true;
-        currentPhase = Phase.Opening;
-        battleSystem.AddTurnBasedBattler(player);
-        battleSystem.AddTurnBasedBattler(enemy);
-        plottingSystem.AddPlotter(player);
-    }
-
-    public void StartBattle(int enemyID)
+    public void StartBattle(FPBattleEventConfig battleEventConfig)
     {
         // enemyIDからenemyConfigを取得してenemyにセットする
+        holdingEvent = battleEventConfig;
+        enemy.SetConfig(FPDataManager.Instance.GetEnemyConfig(battleEventConfig.EnemyID));
 
         // バトルUIの表示
         battleUI.ShowUI(true);
@@ -111,11 +84,19 @@ public class FPBattleManager : MonoBehaviour, IManagerBase, ITurnBasedPlottingSy
 
     void EndBattle()
     {
+        if (enemy.IsDead)
+        {
+            holdingEvent.IsActive = false;
+            holdingEvent.gameObject.SetActive(false);
+        }
+
         // バトルUIの表示
         battleUI.ShowUI(false);
         isActive = false;
         battleSystem.ClearTurnBasedBattlers();
         plottingSystem.ClearPlotters();
+
+        gameScene.EndBattleEvent();
     }
 
     public void OnPressCancel()
@@ -148,8 +129,8 @@ public class FPBattleManager : MonoBehaviour, IManagerBase, ITurnBasedPlottingSy
         battleUI.UpdateEnemyStatusUI();
     }
 
-    #region IManagerBase
-    public void Act()
+    #region ISceneActable
+    public void ActSceneChild()
     {
         if (isActive == false)
         {
@@ -188,12 +169,12 @@ public class FPBattleManager : MonoBehaviour, IManagerBase, ITurnBasedPlottingSy
 
     void ActPlotting()
     {
-
+        plottingSystem.Act();
     }
 
     void ActProcessing()
     {
-
+        battleSystem.Act();
     }
 
     void ActEnding()
@@ -216,7 +197,7 @@ public class FPBattleManager : MonoBehaviour, IManagerBase, ITurnBasedPlottingSy
     #region ITurnBasedBattleSystemEventReceiver
     public void OnEndAllBattleProcess()
     {
-        if (player.IsDead || enemy.IsDead)
+        if (player.IsOutOfBattle || enemy.IsOutOfBattle)
         {
             currentPhase = Phase.Ending;
         }

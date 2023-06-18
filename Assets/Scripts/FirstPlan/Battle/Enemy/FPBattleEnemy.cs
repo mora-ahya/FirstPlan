@@ -89,9 +89,12 @@ public class FPBattleEnemy : FPBattleCharacter, ITurnBasedBattlerBase
     {
         IsEndBattleProcess = false;
 
-        command = new Command();
-        command.OwnerID = 1;
-        command.Kind = 0;
+        if (IsDead == false)
+        {
+            command = new Command();
+            command.OwnerID = 1;
+            command.Kind = 0;
+        }
 
         IsEndBattleProcess = true;
     }
@@ -99,7 +102,12 @@ public class FPBattleEnemy : FPBattleCharacter, ITurnBasedBattlerBase
     public void OnStartProcessingCommand()
     {
         IsEndBattleProcess = false;
-        FPBattleManager.Instance.ApplyCommand(command);
+
+        if (IsDead == false)
+        {
+            BattleManager.ApplyCommand(command);
+        }
+        
         IsEndBattleProcess = true;
     }
 

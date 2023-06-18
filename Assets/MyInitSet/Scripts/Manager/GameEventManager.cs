@@ -11,22 +11,25 @@ public interface IGameEvent
 //可変、複数情報、アップキャストの使用を想定
 public interface IGameEventConfig
 {
-    public bool IsActive { get; }
+    public bool IsActive { get; set; }
     public int EventID { get; }
 }
 
 public class GameEventManager
 {
-    readonly Dictionary<int, IGameEvent> boardEvents = new Dictionary<int, IGameEvent>();
+    readonly Dictionary<int, IGameEvent> gameEvents = new Dictionary<int, IGameEvent>();
 
     public void RegistBoardEvent(int num, IGameEvent boardEvent)
     {
-        boardEvents.Add(num, boardEvent);
+        gameEvents.Add(num, boardEvent);
     }
 
-    public void HappenBoardEvent(IGameEventConfig eventConfig)
+    public void HappenGameEvent(IGameEventConfig eventConfig)
     {
-        boardEvents.TryGetValue(eventConfig.EventID, out IGameEvent boardEvent);
-        boardEvent?.OnHappeningEvent(eventConfig);
+        if (eventConfig.IsActive)
+        {
+            gameEvents.TryGetValue(eventConfig.EventID, out IGameEvent boardEvent);
+            boardEvent?.OnHappeningEvent(eventConfig);
+        }
     }
 }

@@ -6,28 +6,31 @@ using UnityEngine.EventSystems;
 
 public class TDDTest : MonoBehaviour, IMenuFrameHolder
 {
+    public static TDDTest Instance { get; private set; }
+
+    public FPGameScene GameScene => gameScene;
+
     [SerializeField] FourDirectionInputManager directionButton;
     [SerializeField] PlayerOnBoard player;
     [SerializeField] Board board;
     [SerializeField] MenuFrame menuFrame;
     [SerializeField] FPBattleEnemy enemy;
     [SerializeField] FPBattlePlayer player2;
+    [SerializeField] FPBattleEventConfig battleEventConfig;
+    [SerializeField] FPGameScene gameScene;
     // Start is called before the first frame update
+    void Awake()
+    {
+        Instance = this;
+    }
+
     void Start()
     {
-        if (directionButton != null)
-        {
-            player?.StartControl(directionButton);
-        }
-
         board.Initialize(Application.dataPath + "/MyResource/StageConfigs" + "/stage1.json");
         player.Initialize(board, 0);
 
         BoardManager.Instance.SetBoard(board);
 
-        EnemyConfig c = new EnemyConfig("‚©‚ç‚©‚³‚¨‚Î‚¯", 10, 4, 1, 1);
-        
-        enemy.SetConfig(c);
         player2.Initialize();
 
         //FPBattleManager.Instance.SetEnemy(enemy);
@@ -39,10 +42,7 @@ public class TDDTest : MonoBehaviour, IMenuFrameHolder
     {
         if (Input.GetKeyDown(KeyCode.K))
         {
-            enemy.SetConfig(new EnemyConfig("‚©‚ç‚©‚³‚¨‚Î‚¯", 10, 4, 1, 1));
-
-            FPBattleManager.Instance.SetEnemy(enemy);
-            FPBattleManager.Instance.StartBattle();
+            gameScene.StartBattleEvent(battleEventConfig);
         }
         //Debug.Log(board.CheckObjectExisting(3));
         //menuFrame.ScrollElements(true);

@@ -11,6 +11,7 @@ public class FPDataManager : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        LoadEnemyConfigs();
     }
 
     public void LoadEnemyConfigs()

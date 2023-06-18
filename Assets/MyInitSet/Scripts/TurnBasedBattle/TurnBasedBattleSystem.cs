@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 public interface ITurnBasedBattlerBase
-{ 
+{
     public int BattlePriority { get; }
     public bool IsEndBattleProcess { get; }
     public void OnStartTurn();
@@ -17,7 +17,7 @@ public interface ITurnBasedBattleSystemEventReceiver
     public void OnEndAllBattleProcess();
 }
 
-public class TurnBasedBattleSystem : IManagerBase
+public class TurnBasedBattleSystem
 {
     class TurnBasedBattlerComparer : IComparer<ITurnBasedBattlerBase>
     {
@@ -80,9 +80,6 @@ public class TurnBasedBattleSystem : IManagerBase
         CurrentPhase = PhaseEnum.StartTurn;
         currentBattlerNumber = turnBasedBattlers.Count;
     }
-
-    #region IManagerBase
-    public int ActPriority { get; } = 0;
 
     public void Act()
     {
@@ -170,6 +167,4 @@ public class TurnBasedBattleSystem : IManagerBase
             }
         }
     }
-
-    #endregion
 }

@@ -8,9 +8,7 @@ public interface IObjectOnBoard
 {
     public GameObject SelfGameObject { get; }
     public DirectionClass.DirectionEnum Direction { get; }
-    public int PositionNum { get;}
-
-    public bool OnHappendBoardEvent(int boardEventID);
+    public int PositionNum { get; set; }
 }
 
 class BoardPart
@@ -25,7 +23,7 @@ class BoardPart
 // gameObjectの名前をそのまま、jsonのファイル名にする
 public class Board : MonoBehaviour
 {
-    float partSize = 0.5f;
+    float partSize = 1.0f;
     int width;
     int height;
     int boardLength;
@@ -202,14 +200,10 @@ public class Board : MonoBehaviour
         return -1;
     }
 
-    public int GetEventID(int partNum)
+    public IGameEventConfig GetGameEventByPartNumber(int partNum)
     {
-        if (partNum < 0 || boardLength < partNum)
-        {
-            return -1;
-        }
-
-        return boardParts[partNum].HavingEventID;
+        boardEvents.TryGetValue(partNum, out IGameEventConfig eventConfig);
+        return eventConfig;
     }
 
     public virtual void PutOnBoard(int partNum, IObjectOnBoard objectOnBoard)
@@ -238,6 +232,20 @@ public class Board : MonoBehaviour
         }
 
         return nextPartNum;
+    }
+
+    public virtual int MoveObject(IObjectOnBoard objectOnBoard, int destSquare)
+    {
+        if (destSquare < 0 || boardLength < destSquare)
+        {
+            return -1;
+        }
+
+        BoardPart tmp = boardParts[objectOnBoard.PositionNum];
+        tmp.HavingObject = null;
+        boardParts[destSquare].HavingObject = objectOnBoard;
+
+        return destSquare;
     }
 
     [System.Serializable]

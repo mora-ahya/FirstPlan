@@ -5,17 +5,10 @@ using UnityEngine.UI;
 
 public class FPBattleEventConfig : MonoBehaviour, IGameEventConfig
 {
-    public bool IsActive { get; }
-    public int EventID { get; }
-    public int EnemyID { get; protected set; }
+    public bool IsActive { get { return isActive; } set { isActive = value; } }
+    public int EventID => (int)FPGameEventKind.Battle;
+    public int EnemyID => enemyId;
 
-    public void Initialize(int enemyID)
-    {
-        
-        //Image image = GetComponent<Image>();
-        EnemyConfig enemyConfig = FPDataManager.Instance.GetEnemyConfig(enemyID);
-
-        EnemyID = enemyID;
-        //image.sprite = enemyConfig.EnemySprite;
-    }
+    [SerializeField] bool isActive = true;
+    [SerializeField] int enemyId = 0;
 }
