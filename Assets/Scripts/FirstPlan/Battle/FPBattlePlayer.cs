@@ -5,17 +5,21 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
 // statusUI表示は暫定的な作成、後程対応
-public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBasedBattlerBase
+public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase
 {
-    public enum StatusKind
+    struct PlayerSkill
     {
-        MaxHp,
-        Hp,
-        Attack,
-        Defense,
-        Speed,
-        Max,
+        public int SkillID;
+        public int UsableTimes;
+
+        public PlayerSkill(int skillID, int count)
+        {
+            SkillID = skillID;
+            UsableTimes = count;
+        }
     }
+
+    readonly List<PlayerSkill> skills = new List<PlayerSkill>();
 
     int maxHP;
 
@@ -28,6 +32,8 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBas
         status.Defense = 3;
         status.Speed = 3;
         changedStatusFlag = (1 << (int)StatusKind.Max) - 1;
+
+        skills.Add(new PlayerSkill(0, 5));
     }
 
     public void SetCommand(Command playerCommand)
@@ -40,21 +46,64 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBas
         IsAlreadyDecided = true;
     }
 
+    public void DecideSkill(int skillNum)
+    {
+        Command command = new Command();
+        command.OwnerID = 0;
+        command.Kind = 1;
+        command.TargetID = 1;
+        command.SkillID = skills[skillNum].SkillID;
+
+        SetCommand(command);
+    }
+
     void OnPressRunAway()
     {
         // 今回は確定で成功させる
         // 一歩下がる
     }
 
-    public override void OnDamage(int amount)
+    public override void Damaged(int amount)
     {
-        base.OnDamage(amount);
-        changedStatusFlag |= 1 << (int)StatusKind.Hp;
+        base.Damaged(amount);
+        
     }
 
-    public string GetSkillInfo(int num)
+    public int GetHavingSkillNum()
     {
-        return "技" + num;
+        return skills.Count;
+    }
+
+    public string GetSkillName(int num)
+    {
+        if (skills.Count < num)
+        {
+            return null;
+        }
+
+        int skillNum = skills[num].SkillID;
+
+        return FPDataManager.Instance.GetSkillConfig(skillNum).Name;
+    }
+
+    public int GetSkillID(int num)
+    {
+        if (skills.Count < num)
+        {
+            return -1;
+        }
+
+        return skills[num].SkillID;
+    }
+
+    public int GetSkillUsableTimes(int num)
+    {
+        if (skills.Count < num)
+        {
+            return -1;
+        }
+
+        return skills[num].UsableTimes;
     }
 
     public override string GetUpdateableTextString(int num, GameObject gObject)
@@ -71,7 +120,7 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBas
                 return maxHP.ToString();
             case StatusKind.Hp:
                 return status.Hp.ToString();
-            case StatusKind.Attack:
+            case StatusKind.Offense:
                 return status.Offense.ToString();
             case StatusKind.Defense:
                 return status.Defense.ToString();
@@ -80,6 +129,17 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBas
             default:
                 return string.Empty;
         }
+    }
+
+    public void GrowUpStatus(int aPoint, int dPoint, int sPoint)
+    {
+        status.Offense += aPoint;
+        status.Defense += dPoint;
+        status.Speed += sPoint;
+
+        changedStatusFlag |= 1 << (int)StatusKind.Offense;
+        changedStatusFlag |= 1 << (int)StatusKind.Defense;
+        changedStatusFlag |= 1 << (int)StatusKind.Speed;
     }
 
     #region ITurnBasedPlotterBase
@@ -98,10 +158,7 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBas
 
 
     #region ITurnBasedBattlerBase Player
-    public bool IsEndBattleProcess { get; protected set; }
-    public int BattlePriority { get; protected set; }
-
-    public void OnStartTurn()
+    public override void OnStartTurn()
     {
         IsEndBattleProcess = false;
 
@@ -109,27 +166,9 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase, ITurnBas
 
         if (command.Kind == 2)
         {
-            BattlePriority += 1024;
+            BattlePriority += 2048;
         }
 
-        IsEndBattleProcess = true;
-    }
-
-    public void OnStartProcessingCommand()
-    {
-        IsEndBattleProcess = false;
-
-        if (IsDead == false)
-        {
-            BattleManager.ApplyCommand(command);
-        }
-        
-        IsEndBattleProcess = true;
-    }
-
-    public void OnEndTurn()
-    {
-        IsEndBattleProcess = false;
         IsEndBattleProcess = true;
     }
     #endregion

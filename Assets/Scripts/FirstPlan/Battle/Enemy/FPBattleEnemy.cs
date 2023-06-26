@@ -20,19 +20,11 @@ public struct EnemyStatus
 }
 
 // statusUI•\Ž¦‚ÍŽb’è“I‚Èì¬AŒã’ö‘Î‰ž
-public class FPBattleEnemy : FPBattleCharacter, ITurnBasedBattlerBase
+public class FPBattleEnemy : FPBattleCharacter
 {
-    public enum StatusKind
-    {
-        Name,
-        Hp,
-        Attack,
-        Defense,
-        Speed,
-        Max,
-    }
-
     public string Name => enemyConfig == null ? string.Empty : enemyConfig.Name;
+
+    public int MaxHp => enemyConfig == null ? 0 : enemyConfig.HP;
 
     EnemyConfig enemyConfig;
 
@@ -50,6 +42,11 @@ public class FPBattleEnemy : FPBattleCharacter, ITurnBasedBattlerBase
         changedStatusFlag = (1 << (int)StatusKind.Max) - 1;
     }
 
+    public EnemyConfig GetConfig()
+    {
+        return enemyConfig;
+    }
+
     public override string GetUpdateableTextString(int num, GameObject gObject)
     {
         changedStatusFlag &= ~(1 << num);
@@ -58,13 +55,15 @@ public class FPBattleEnemy : FPBattleCharacter, ITurnBasedBattlerBase
 
     string GetStatusString(int num)
     {
-        switch (StatusKind.Name + num)
+        switch (StatusKind.MaxHp + num)
         {
             case StatusKind.Name:
                 return Name;
+            case StatusKind.MaxHp:
+                return MaxHp.ToString();
             case StatusKind.Hp:
                 return status.Hp.ToString();
-            case StatusKind.Attack:
+            case StatusKind.Offense:
                 return status.Offense.ToString();
             case StatusKind.Defense:
                 return status.Defense.ToString();
@@ -75,46 +74,8 @@ public class FPBattleEnemy : FPBattleCharacter, ITurnBasedBattlerBase
         }
     }
 
-    public override void OnDamage(int amount)
+    public override void Damaged(int amount)
     {
-        base.OnDamage(amount);
-        changedStatusFlag |= 1 << (int)StatusKind.Hp;
+        base.Damaged(amount);
     }
-
-    #region ITurnBasedBattlerBase Enemy
-    public bool IsEndBattleProcess { get; protected set; }
-    public int BattlePriority { get; private set; }
-
-    public void OnStartTurn()
-    {
-        IsEndBattleProcess = false;
-
-        if (IsDead == false)
-        {
-            command = new Command();
-            command.OwnerID = 1;
-            command.Kind = 0;
-        }
-
-        IsEndBattleProcess = true;
-    }
-
-    public void OnStartProcessingCommand()
-    {
-        IsEndBattleProcess = false;
-
-        if (IsDead == false)
-        {
-            BattleManager.ApplyCommand(command);
-        }
-        
-        IsEndBattleProcess = true;
-    }
-
-    public void OnEndTurn()
-    {
-        IsEndBattleProcess = false;
-        IsEndBattleProcess = true;
-    }
-    #endregion
 }

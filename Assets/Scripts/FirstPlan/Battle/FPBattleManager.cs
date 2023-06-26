@@ -15,9 +15,25 @@ public class FPBattleManager : MonoBehaviour, MyInitSet.ISceneActable, IFPGameSc
     static readonly string OpeningString = "{0}　があらわれた";
     static readonly string AttackString = "{0}　のこうげき";
     static readonly string SkillString = "{0}　は {1} をつかった";
-    static readonly string RunAwayString = "{0}　にげだした";
+    static readonly string RunAwayPlayerString = "あなたはにげだした";
+    static readonly string RunAwayEnemyString = "{0}　はにげだした";
     static readonly string DamageString = "{0}　に{1}のダメージをあたえた";
     static readonly string DamagedString = "{0}　は{1}のダメージをうけた";
+    static readonly string KilledPlayerString = "あなたはちからつきた...";
+    static readonly string KillEnemyString = "{0}　をたおした";
+    static readonly string StatusUpString = "ステータスがあがった！";
+
+    static readonly string ObservationString = "{0}　を注意深く観察することで";
+    static readonly string ObservationString2 = "スキルを覚えられるかもしれない";
+    static readonly string ObservationString3 = "観察しますか？";
+    static readonly string ObservationSuccessString = "{0}　を覚えた！";
+    static readonly string ObservationFailureString = "視界がぼやけて観察できなかった...";
+
+    struct TurnResult
+    {
+        int actKind; // どんな行動をしたか
+        int amount; // どれくらいダメージを与えたか
+    }
 
     enum Phase
     {
@@ -27,13 +43,25 @@ public class FPBattleManager : MonoBehaviour, MyInitSet.ISceneActable, IFPGameSc
         Ending,
     }
 
+    enum BattleResult
+    {
+        Win,
+        Lose,
+        PlayerRunAway,
+        EnemyRunAway,
+    }
+
     Phase currentPhase = Phase.Opening;
+    BattleResult battleResult = BattleResult.Win;
 
     public int ActPriority { get; } = 0;
     bool isActive = false;
 
+    public FPBattleSkillManager SkillManager => skillManager;
+
     readonly TurnBasedBattleSystem battleSystem = new TurnBasedBattleSystem();
     readonly TurnBasedPlottingSystem plottingSystem = new TurnBasedPlottingSystem();
+    readonly FPBattleSkillManager skillManager = new FPBattleSkillManager();
 
     FPGameScene gameScene;
 
@@ -43,6 +71,8 @@ public class FPBattleManager : MonoBehaviour, MyInitSet.ISceneActable, IFPGameSc
 
     FPBattleEventConfig holdingEvent;
 
+    int actPhase = 0;
+
     void Awake()
     {
         battleUI.SetPlayer(player);
@@ -50,6 +80,7 @@ public class FPBattleManager : MonoBehaviour, MyInitSet.ISceneActable, IFPGameSc
 
         plottingSystem.SetEventReceiver(this);
         battleSystem.SetEventReceiver(this);
+        skillManager.Initialize(this);
     }
 
     public void SetScene(FPGameScene gScene)
@@ -104,26 +135,38 @@ public class FPBattleManager : MonoBehaviour, MyInitSet.ISceneActable, IFPGameSc
         
     }
 
-    public void ApplyCommand(Command command)
+    // マネージャーはUI表示のために、キャラクターがどんな行動をしたのか、どのような結果になったかを保持しておきたい
+    // しかし、現状のスキルの仕組みとマネージャーの処理ではかみ合わない
+    public void ReportCharacterStartTurn(FPBattleCharacter character)
     {
-        FPBattleCharacter attacker;
+        // ○○の攻撃
+    }
+
+    public void ReportCharacterUseSkill(FPBattleCharacter character, int skillID)
+    {
+        // ○○の目にもとまらぬ攻撃 など
+    }
+
+    public void ReportCharacterDamaged(FPBattleCharacter damager, int amount)
+    {
+        // ○○は amount のダメージをうけた
+    }
+
+    public void DealDamageToCharacter(FPBattleCharacter damager, int amount)
+    {
         FPBattleCharacter defender;
 
-        if (command.OwnerID == 0)
+        if (damager.GetCommand().TargetID == 0)
         {
-            attacker = player;
-            defender = enemy;
+            defender = player;
         }
         else
         {
-            attacker = enemy;
-            defender = player;
+            defender = enemy;
         }
 
-        int offense = attacker.Offense;
-        int defense = defender.Defense;
-
-        defender.OnDamage(Mathf.Max(offense - defense, 0));
+        int damageAmount = defender.CalculateDamage(damager, amount);
+        defender.Damaged(damageAmount);
 
         battleUI.UpdatePlayerStatusUI();
         battleUI.UpdateEnemyStatusUI();
@@ -181,8 +224,42 @@ public class FPBattleManager : MonoBehaviour, MyInitSet.ISceneActable, IFPGameSc
     {
         if (Input.GetMouseButtonDown(0))
         {
-            EndBattle();
+            if (actPhase == 0)
+            {
+                if (battleResult == BattleResult.Win)
+                {
+                    // ステータス上昇反映
+                    EnemyConfig enemyConfig = enemy.GetConfig();
+                    player.GrowUpStatus(enemyConfig.DropAttackPoint, enemyConfig.DropDefencePoint, enemyConfig.DropSpeedPoint);
+                    battleUI.UpdatePlayerStatusUI();
+                }
+                actPhase++;
+            }
+            else
+            {
+                EndBattle();
+            }
         }
+    }
+
+    void ActEndingForWinResult()
+    {
+        //switch (actPhase)
+        //{
+        //    case 0:
+        //        battleUI.ClearTexts();
+        //        battleUI.AddBattleStr(string.Format(KillEnemyString, enemy.Name));
+        //        battleUI.AddBattleStr(StatusUpString);
+        //        battleUI.AddBattleStr(ObservationString);
+        //        battleUI.AddBattleStr(ObservationString2);
+        //        battleUI.AddBattleStr(ObservationString3);
+        //        actPhase++;
+        //        break;
+
+        //    case 1:
+        //        break;
+        //}
+
     }
     #endregion
 
@@ -200,11 +277,33 @@ public class FPBattleManager : MonoBehaviour, MyInitSet.ISceneActable, IFPGameSc
         if (player.IsOutOfBattle || enemy.IsOutOfBattle)
         {
             currentPhase = Phase.Ending;
+            actPhase = 0;
+            CheckBattleResult();
         }
         else
         {
             currentPhase = Phase.Plotting;
             plottingSystem.StartPlotting();
+        }
+    }
+
+    void CheckBattleResult()
+    {
+        if (enemy.IsDead)
+        {
+            battleResult = BattleResult.Win;
+        }
+        else if (player.IsRunningAway)
+        {
+            battleResult = BattleResult.PlayerRunAway;
+        }
+        else if (player.IsDead)
+        {
+            battleResult = BattleResult.Lose;
+        }
+        else if (enemy.IsRunningAway)
+        {
+            battleResult = BattleResult.EnemyRunAway;
         }
     }
     #endregion

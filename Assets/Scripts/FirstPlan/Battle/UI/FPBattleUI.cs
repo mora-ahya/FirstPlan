@@ -126,7 +126,7 @@ public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
                 break;
 
             case CommandPhase.SkillSelect:
-                NumOfContent = 30;
+                NumOfContent = player.GetHavingSkillNum() + 3;
                 battleCommand.SetUp(3, 4);
                 break;
         }
@@ -178,20 +178,20 @@ public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
         }
         else if (num < 3)
         {
-            text.text = "";
+            text.text = null;
         }
         else
         {
             num -= 3;
-            text.text = player.GetSkillInfo(num);
-            if (num % 4 == 0)
-            {
-                text.color = Color.gray;
-            }
-            else
-            {
-                text.color = Color.white;
-            }
+            text.text = player.GetSkillName(num);
+            //if (num % 4 == 0)
+            //{
+            //    text.color = Color.gray;
+            //}
+            //else
+            //{
+            //    text.color = Color.white;
+            //}
         }
     }
 
@@ -230,7 +230,8 @@ public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
         Command command = new Command();
         command.OwnerID = 0;
         command.Kind = 0;
-        
+        command.TargetID = 1;
+
         player.SetCommand(command);
         player.DecideCommand();
         EndPlotting();
@@ -268,12 +269,7 @@ public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
         else
         {
             num -= 3;
-            Command command = new Command();
-            command.OwnerID = 0;
-            command.Kind = 1;
-            command.SkillNum = num;
-
-            player.SetCommand(command);
+            player.DecideSkill(num);
             player.DecideCommand();
             EndPlotting();
         }
