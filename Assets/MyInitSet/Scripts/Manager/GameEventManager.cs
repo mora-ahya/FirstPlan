@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+//分ける意味あった？
+
 //不変、単一情報
 public interface IGameEvent
 {

@@ -31,7 +31,7 @@ public class TDDTest : MonoBehaviour, IMenuFrameHolder
 
         BoardManager.Instance.SetBoard(board);
 
-        player2.Initialize();
+        //player2.Initialize();
 
         //FPBattleManager.Instance.SetEnemy(enemy);
         //FPBattleManager.Instance.StartBattle();
@@ -60,7 +60,7 @@ public class TDDTest : MonoBehaviour, IMenuFrameHolder
 
         tmp.SetText(num.ToString());
     }
-    public void OnClicked(int num, PointerEventData eventData)
+    public void OnSelected(int num, PointerEventData eventData)
     {
         Debug.Log(num);
     }

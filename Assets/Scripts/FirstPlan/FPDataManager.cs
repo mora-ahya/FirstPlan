@@ -8,6 +8,7 @@ public class FPDataManager : MonoBehaviour
 
     readonly Dictionary<int, EnemyConfig> enemyConfigs = new Dictionary<int, EnemyConfig>();
     readonly Dictionary<int, FPBattleSkillConfig> skillConfigs = new Dictionary<int, FPBattleSkillConfig>();
+    readonly Dictionary<int, FPItemConfig> itemConfigs = new Dictionary<int, FPItemConfig>();
 
     void Awake()
     {
@@ -30,11 +31,29 @@ public class FPDataManager : MonoBehaviour
     public void LoadSkillConfigs()
     {
         skillConfigs.Add(0, new FPBattleSkillConfig("パワーアタック", 0, 0));
+        skillConfigs.Add(1, new FPBattleSkillConfig("疾風突き", 1, 0));
+        skillConfigs.Add(2, new FPBattleSkillConfig("ガードスルー", 2, 0));
+        skillConfigs.Add(10, new FPBattleSkillConfig("ブロック", 10, 1));
     }
 
     public FPBattleSkillConfig GetSkillConfig(int num)
     {
         skillConfigs.TryGetValue(num, out FPBattleSkillConfig skillConfig);
+        return skillConfig;
+    }
+
+    public void LoadItemConfigs()
+    {
+        itemConfigs.Add(0, new FPItemConfig("きずぐすり", 0, 0, 10));
+        itemConfigs.Add(10, new FPItemConfig("いのちの玉", 10, 1, 10));
+        itemConfigs.Add(20, new FPItemConfig("木のけん", 20, 2, 3));
+        itemConfigs.Add(30, new FPItemConfig("木のたて", 30, 3, 3));
+        itemConfigs.Add(40, new FPItemConfig("木のくつ", 40, 4, 3));
+    }
+
+    public FPItemConfig GetItemConfig(int num)
+    {
+        itemConfigs.TryGetValue(num, out FPItemConfig skillConfig);
         return skillConfig;
     }
 }
@@ -83,5 +102,27 @@ public class FPBattleSkillConfig
         Name = name;
         SkillID = skillID;
         SkillKind = skillKind;
+    }
+}
+
+public class FPItemConfig
+{
+    // ItemKind
+    // 0 ... 回復
+    // 1 ... ステ強化HP
+    // 2 ... ステ強化OF
+    // 3 ... ステ強化DF
+    // 4 ... ステ強化SP
+    public string Name { get; protected set; }
+    public int ItemID { get; protected set; }
+    public int ItemKind { get; protected set; }
+    public int Amount { get; protected set; }
+
+    public FPItemConfig(string name, int itemID, int itemKind, int amount)
+    {
+        Name = name;
+        ItemID = itemID;
+        ItemKind = itemKind;
+        Amount = amount;
     }
 }

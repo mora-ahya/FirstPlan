@@ -7,35 +7,35 @@ public interface IMenuFrameHolder
 {
     public int NumOfContent { get; }
     public void SetContent(int num, GameObject gameObject);
-    public void OnClicked(int num, PointerEventData eventData);
+    public void OnSelected(int num, PointerEventData eventData);
 }
 
-public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler, IDragHandler, IScrollHandler
+public class MenuFrame : MonoBehaviour
 {
     public int CurrentTopLeftNum { get; private set; } = 0;
 
-    RectTransform selfRectTransform;
+    protected RectTransform selfRectTransform;
 
-    float paddingX = 10.0f;
-    float paddingY = 5.0f;
-    int widthElementNum;
-    float elementWidth;
-    float elementWidthOffset;
+    protected float paddingX = 10.0f;
+    protected float paddingY = 5.0f;
+    protected int widthElementNum;
+    protected float elementWidth;
+    protected float elementWidthOffset;
 
-    int heightElementNum;
-    float elementHeight;
-    float elementHeightOffset;
+    protected int heightElementNum;
+    protected float elementHeight;
+    protected float elementHeightOffset;
 
-    IMenuFrameHolder holder;
+    protected IMenuFrameHolder holder;
 
-    int usedElementCount = 1;
-    readonly List<RectTransform> elements = new List<RectTransform>();
-    GameObject elementsMaster;
+    protected int usedElementCount = 1;
+    protected readonly List<RectTransform> elements = new List<RectTransform>();
+    protected GameObject elementsMaster;
 
 
-    int moveID = 0;
-    bool isUp;
-    TimerManager.TimerOnceEventHandler onEndScroll;
+    protected int moveID = 0;
+    protected bool isUp;
+    protected TimerManager.TimerOnceEventHandler onEndScroll;
 
     // 同じContentなら自由に使いまわしできるようにしたい、elements配列のメモリ節約的な追加を実装する
     public void SetUp(int widthEleNum, int heightEleNum, float eleWidthOffset = 0.0f, float eleHeightOffset = 0.0f)
@@ -58,13 +58,11 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
             }
         }
 
-        CurrentTopLeftNum = 0;
         usedElementCount = widthEleNum * (heightEleNum + 2);
         if (elements.Capacity < usedElementCount)
         {
             elements.Capacity = usedElementCount;
         }
-        elementsMaster.transform.localPosition = Vector3.zero;
 
         widthElementNum = widthEleNum;
         elementWidthOffset = eleWidthOffset;
@@ -74,11 +72,14 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
 
         selfRectTransform.sizeDelta = new Vector2(widthElementNum * (elementWidth + elementWidthOffset) + paddingX * 2.0f, heightElementNum * (elementHeight + elementHeightOffset) + paddingY * 2.0f);
 
-        UpdateMenuFrame();
+        UpdateMenuWithResetElementPos();
     }
 
-    void UpdateMenuFrame()
+    public void UpdateMenuWithResetElementPos()
     {
+        elementsMaster.transform.localPosition = Vector3.zero;
+        CurrentTopLeftNum = 0;
+
         Vector3 topLeftPos = new Vector3((-selfRectTransform.sizeDelta.x + elementWidth) / 2.0f + paddingX, (selfRectTransform.sizeDelta.y - elementHeight) / 2.0f - paddingY, 0.0f);
         Vector3 wDiffVec = new Vector3(elementWidth + elementWidthOffset, 0.0f, 0.0f);
         Vector3 hDiffVec = new Vector3(0.0f, elementHeight + elementHeightOffset, 0.0f);
@@ -108,7 +109,26 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
         }
     }
 
-    RectTransform GetOrCreateElement(int num)
+    public void UpdateMenu()
+    {
+        for (int i = 0; i < usedElementCount; i++)
+        {
+            int wNum = i % widthElementNum;
+
+            RectTransform rectTransform = GetOrCreateElement((i + CurrentTopLeftNum) % usedElementCount);
+
+            if (i < usedElementCount - widthElementNum)
+            {
+                holder?.SetContent(i + CurrentTopLeftNum, rectTransform.gameObject);
+            }
+            else
+            {
+                holder?.SetContent(CurrentTopLeftNum + wNum - widthElementNum, rectTransform.gameObject);
+            }
+        }
+    }
+
+    protected RectTransform GetOrCreateElement(int num)
     {
         if (num < 0 || usedElementCount <= num)
         {
@@ -160,7 +180,7 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
         moveID = Mover.StartMove(elementsMaster, elementsMaster.transform.position + new Vector3(0.0f, elementHeight, 0.0f) * dir, 0.15f, endProcess: onEndScroll);
     }
 
-    void OnEndScroll(int timerID)
+    protected void OnEndScroll(int timerID)
     {
         int topElementNum = CurrentTopLeftNum % usedElementCount;
         int elementNum1 = (topElementNum + usedElementCount - widthElementNum) % usedElementCount;
@@ -182,67 +202,5 @@ public class MenuFrame : MonoBehaviour, IPointerClickHandler, IBeginDragHandler,
         }
 
         CurrentTopLeftNum += dir * widthElementNum;
-    }
-
-    public void OnPointerClick(PointerEventData eventData)
-    {
-        if (isDrag)
-        {
-            isDrag = false;
-            return;
-        }
-
-        int eleNum = GetPressElementNum(eventData.pressPosition);
-
-        if (eleNum < 0 || eleNum > widthElementNum * heightElementNum || eleNum != GetPressElementNum(eventData.position))
-        {
-            return;
-        }
-
-        holder?.OnClicked(eleNum + CurrentTopLeftNum, eventData);
-    }
-
-    int GetPressElementNum(Vector2 pos)
-    {
-        Vector2 topLeft = selfRectTransform.position;
-        topLeft.x -= selfRectTransform.sizeDelta.x / 2.0f - paddingX;
-        topLeft.y += selfRectTransform.sizeDelta.y / 2.0f - paddingY;
-
-        topLeft = pos - topLeft;
-
-        if (topLeft.x < 0.0f || topLeft.x > selfRectTransform.sizeDelta.x - paddingX * 2.0f || topLeft.y > 0.0f || topLeft.y < -(selfRectTransform.sizeDelta.y - paddingY * 2.0f))
-        {
-            return -1;
-        }
-
-        topLeft.y = Mathf.Abs(topLeft.y);
-
-        return Mathf.FloorToInt(topLeft.x / (elementWidth + elementWidthOffset)) + Mathf.FloorToInt(topLeft.y / (elementHeight + elementHeightOffset)) * widthElementNum;
-    }
-
-    Vector2 beginDragPos;
-    bool isDrag;
-
-    public void OnBeginDrag(PointerEventData eventData)
-    {
-        beginDragPos = eventData.pressPosition;
-    }
-
-    public void OnDrag(PointerEventData eventData)
-    {
-        float diff = eventData.position.y - beginDragPos.y;
-        if (Mathf.Abs(diff) < 20.0f)
-        {
-            return;
-        }
-
-        beginDragPos = eventData.position;
-        isDrag = true;
-        ScrollElements(diff > 0.0f);
-    }
-
-    public void OnScroll(PointerEventData eventData)
-    {
-        ScrollElements(eventData.scrollDelta.y < 0.0f);
     }
 }

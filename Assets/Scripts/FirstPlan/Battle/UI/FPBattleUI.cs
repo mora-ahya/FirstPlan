@@ -6,30 +6,28 @@ using UnityEngine.EventSystems;
 
 public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
 {
-    public bool IsBattleStrsEmpty => battleStrs.Count == 0;
+    public bool IsBattleStrsEmpty => commonUI.IsCommonStrsEmpty;
 
-    [SerializeField] MenuFrame battleCommand;
-    [SerializeField] Text[] battleTexts;
-    [SerializeField] UpdateableTexts playerStatusUI;
+    [SerializeField] FPCommonUI commonUI;
+
+    [SerializeField] MenuFrame battleCommand; // コマンドとスキル選択で分ける
+    [SerializeField] MenuFrame skillMenu;
     [SerializeField] UpdateableTexts enemyStatusUI;
-
-    Queue<string> battleStrs = new Queue<string>();
-
-    int usingTextCount = 0;
 
     FPBattlePlayer player;
 
     void Awake()
     {
         battleCommand.SetMenuFrameHolder(this);
-        usingTextCount = battleTexts.Length;
+        battleCommand.SetUp(1, 3);
+        skillMenu.SetMenuFrameHolder(this);
+        skillMenu.SetUp(1, 3);
         ClearTexts();
     }
 
     public void SetPlayer(FPBattlePlayer p)
     {
         player = p;
-        playerStatusUI.SetUpdateableTextsHandler(p);
     }
 
     public void SetEnemy(FPBattleEnemy e)
@@ -40,6 +38,7 @@ public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
     public void ShowUI(bool b)
     {
         gameObject.SetActive(b);
+        commonUI.ShowCommonTexts(b);
     }
 
     public void StartPlotting()
@@ -55,38 +54,23 @@ public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
 
     public void AddBattleStr(string str)
     {
-        battleStrs.Enqueue(str);
+        commonUI.AddCommonStr(str);
     }
 
     public void ApplyText()
     {
-        if (battleStrs.Count == 0)
-        {
-            return;
-        }
-
-        if (battleTexts.Length == usingTextCount)
-        {
-            ClearTexts();
-        }
-
-        battleTexts[usingTextCount++].text = battleStrs.Dequeue();
+        commonUI.ApplyText();
     }
 
     public void ClearTexts()
     {
-        for (int i = 0; i < usingTextCount; i++)
-        {
-            battleTexts[i].text = string.Empty;
-        }
-
-        usingTextCount = 0;
+        commonUI.ClearTexts();
     }
 
     #region UpdateableTexts
     public void UpdatePlayerStatusUI()
     {
-        playerStatusUI.UpdateTexts();
+        commonUI.UpdatePlayerStatus();
     }
 
     public void UpdateEnemyStatusUI()
@@ -122,27 +106,28 @@ public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
         {
             case CommandPhase.Common:
                 NumOfContent = commandTexts.Length;
-                battleCommand.SetUp(1, 3);
+                battleCommand.gameObject.SetActive(true);
+                skillMenu.gameObject.SetActive(false);
                 break;
 
             case CommandPhase.SkillSelect:
-                NumOfContent = player.GetHavingSkillNum() + 3;
-                battleCommand.SetUp(3, 4);
+                NumOfContent = player.GetHavingSkillNum() + 1;
+                battleCommand.gameObject.SetActive(false);
+                skillMenu.gameObject.SetActive(true);
+                skillMenu.UpdateMenu();
                 break;
         }
     }
 
     public void SetContent(int num, GameObject gObject)
     {
-        switch (currentCommandPhase)
+        if (gObject.transform.parent.parent.name == battleCommand.gameObject.name)
         {
-            case CommandPhase.Common:
-                SetCommonContent(num, gObject);
-                break;
-
-            case CommandPhase.SkillSelect:
-                SetSkillContent(num, gObject);
-                break;
+            SetCommonContent(num, gObject);
+        }
+        else
+        {
+            SetSkillContent(num, gObject);
         }
     }
 
@@ -157,7 +142,6 @@ public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
         gObject.SetActive(true);
         Text text = gObject.GetComponent<Text>();
         text.text = commandTexts[num];
-        text.color = Color.white;
     }
 
     void SetSkillContent(int num, GameObject gObject)
@@ -169,33 +153,21 @@ public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
         }
 
         gObject.SetActive(true);
-        Text text = gObject.GetComponent<Text>();
+        FPSkillMenu skillMenu = gObject.GetComponent<FPSkillMenu>();
 
         if (num == 0)
         {
-            text.color = Color.white;
-            text.text = "戻る";
-        }
-        else if (num < 3)
-        {
-            text.text = null;
+            skillMenu.SetContents("戻る", -1);
         }
         else
         {
-            num -= 3;
-            text.text = player.GetSkillName(num);
-            //if (num % 4 == 0)
-            //{
-            //    text.color = Color.gray;
-            //}
-            //else
-            //{
-            //    text.color = Color.white;
-            //}
+            num -= 1;
+            int usableTimes = player.GetSkillUsableTimes(num);
+            skillMenu.SetContents(player.GetSkillName(num), usableTimes);
         }
     }
 
-    public void OnClicked(int num, PointerEventData eventData)
+    public void OnSelected(int num, PointerEventData eventData)
     {
         switch (currentCommandPhase)
         {
@@ -262,13 +234,14 @@ public class FPBattleUI : MonoBehaviour, IMenuFrameHolder
         {
             ChangeCommandPhase(CommandPhase.Common);
         }
-        else if (num < 3)
-        {
-            // 何もしない
-        }
         else
         {
-            num -= 3;
+            num -= 1;
+            if (player.GetSkillUsableTimes(num) == 0)
+            {
+                return;
+            }
+            
             player.DecideSkill(num);
             player.DecideCommand();
             EndPlotting();

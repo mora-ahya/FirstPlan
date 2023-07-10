@@ -31,7 +31,7 @@ public class AttackSkill : IFPBattleSkill
 {
     public int BattleSkillKind { get; } = (int)FPBattleSkillKind.Attack;
 
-    FPBattleManager battleManager;
+    readonly FPBattleManager battleManager;
 
     public AttackSkill(FPBattleManager bm)
     {
@@ -54,12 +54,21 @@ public class AttackSkill : IFPBattleSkill
     public void DoProcess(int skillID, FPBattleCharacter skillUserT)
     {
         float skillRate = 1.0f;
-        if (skillID == 0)
+
+        switch (skillID)
         {
-            skillRate = 1.3f;
+            case 0:
+                skillRate = 1.3f;
+                break;
+            case 1:
+                skillRate = 0.75f;
+                break;
+            case 2:
+                battleManager.DealConditionToCharacter(skillUserT, (int)FPCharacterCondition.GuardThrough);
+                break;
         }
 
-        int damagePoint = Mathf.CeilToInt(skillUserT.Offense * skillRate);
+        int damagePoint = Mathf.CeilToInt(skillUserT.CalculateOffenseDamage(skillUserT.Offense) * skillRate);
 
         battleManager.ReportCharacterUseSkill(skillUserT, skillID);
         battleManager.DealDamageToCharacter(skillUserT, damagePoint);
@@ -75,22 +84,39 @@ public class EnhancedSkill : IFPBattleSkill
 {
     public int BattleSkillKind { get; } = (int)FPBattleSkillKind.Enhanced;
 
+    readonly FPBattleManager battleManager;
+
+    public EnhancedSkill(FPBattleManager bm)
+    {
+        battleManager = bm;
+    }
+
     // スキルID 10 ブロック 被ダメージを75%軽減
     // スキルID 11 メタル討伐の証 全ステータスが上昇する(永続)
 
     public void DoPreProcess(int skillID, FPBattleCharacter skillUserT)
     {
-
+        switch (skillID)
+        {
+            case 10:
+                skillUserT.conditions.AddCondition((int)FPCharacterCondition.Block);
+                break;
+        }
     }
 
     public void DoProcess(int skillID, FPBattleCharacter skillUserT)
     {
-
+        battleManager.ReportCharacterUseSkill(skillUserT, skillID);
     }
 
     public void DoPostProcess(int skillID, FPBattleCharacter skillUserT)
     {
-
+        switch (skillID)
+        {
+            case 10:
+                skillUserT.conditions.RemoveCondition((int)FPCharacterCondition.Block);
+                break;
+        }
     }
 }
 

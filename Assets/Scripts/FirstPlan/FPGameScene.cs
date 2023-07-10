@@ -14,7 +14,9 @@ public class FPGameScene : MyInitSet.MySceneBase, IFourDirectionInputReceiver
     public override int SceneKind { get; } = (int)FPSceneKind.GameScene;
 
     [SerializeField] FourDirectionInputManager directionButton;
+    [SerializeField] FPCommonUI commonUI;
     [SerializeField] PlayerOnBoard player;
+    [SerializeField] FPBattlePlayer battlePlayer;
     [SerializeField] FPBattleManager fPBattleManager;
 
     TimerManager.TimerOnceEventHandler onMovePlayerEnd;
@@ -27,6 +29,9 @@ public class FPGameScene : MyInitSet.MySceneBase, IFourDirectionInputReceiver
 
         directionButton.SetReceiver(this);
         SetUpChildren(this);
+
+        battlePlayer.Initialize();
+        commonUI.SetPlayer(battlePlayer);
 
         FPBattleCharacter.SetBattleManager(fPBattleManager);
     }

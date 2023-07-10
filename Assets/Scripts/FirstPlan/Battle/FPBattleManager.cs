@@ -147,29 +147,44 @@ public class FPBattleManager : MonoBehaviour, MyInitSet.ISceneActable, IFPGameSc
         // ○○の目にもとまらぬ攻撃 など
     }
 
+    // レポート系をバトルマネージャーから分離する
     public void ReportCharacterDamaged(FPBattleCharacter damager, int amount)
     {
         // ○○は amount のダメージをうけた
     }
 
-    public void DealDamageToCharacter(FPBattleCharacter damager, int amount)
+    FPBattleCharacter GetCharacterByID(int id)
     {
-        FPBattleCharacter defender;
+        FPBattleCharacter chara;
 
-        if (damager.GetCommand().TargetID == 0)
+        if (id == 0)
         {
-            defender = player;
+            chara = player;
         }
         else
         {
-            defender = enemy;
+            chara = enemy;
         }
 
-        int damageAmount = defender.CalculateDamage(damager, amount);
+        return chara;
+    }
+
+    public void DealDamageToCharacter(FPBattleCharacter dealer, int amount)
+    {
+        FPBattleCharacter defender = GetCharacterByID(dealer.GetCommand().TargetID);
+
+        int damageAmount = defender.CalculateDefenseDamage(dealer, amount);
         defender.Damaged(damageAmount);
 
         battleUI.UpdatePlayerStatusUI();
         battleUI.UpdateEnemyStatusUI();
+    }
+
+    public void DealConditionToCharacter(FPBattleCharacter dealer, int conditionNum)
+    {
+        FPBattleCharacter affected = GetCharacterByID(dealer.GetCommand().TargetID);
+
+        affected.conditions.AddCondition(conditionNum);
     }
 
     #region ISceneActable
@@ -230,7 +245,9 @@ public class FPBattleManager : MonoBehaviour, MyInitSet.ISceneActable, IFPGameSc
                 {
                     // ステータス上昇反映
                     EnemyConfig enemyConfig = enemy.GetConfig();
-                    player.GrowUpStatus(enemyConfig.DropAttackPoint, enemyConfig.DropDefencePoint, enemyConfig.DropSpeedPoint);
+                    player.GrowUpStatus(StatusKindEnum.Offense, enemyConfig.DropAttackPoint);
+                    player.GrowUpStatus(StatusKindEnum.Defense, enemyConfig.DropDefencePoint);
+                    player.GrowUpStatus(StatusKindEnum.Speed, enemyConfig.DropSpeedPoint);
                     battleUI.UpdatePlayerStatusUI();
                 }
                 actPhase++;

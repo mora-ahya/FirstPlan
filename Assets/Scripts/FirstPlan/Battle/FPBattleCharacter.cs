@@ -5,11 +5,23 @@ using UnityEngine;
 [System.Serializable]
 public struct CharacterStatus
 {
+    public int MaxHp;
     public int Hp;
 
     public int Offense;
     public int Defense;
     public int Speed;
+}
+
+public enum StatusKindEnum
+{
+    MaxHp,
+    Hp,
+    Offense,
+    Defense,
+    Speed,
+    Name,
+    Max,
 }
 
 public struct Command
@@ -18,6 +30,13 @@ public struct Command
     public int TargetID;
     public int Kind;
     public int SkillID;
+}
+
+public enum FPCharacterCondition
+{
+    Block,
+    GuardThrough,
+    Charge,
 }
 
 public class FPBattleCharacter : MonoBehaviour, ITurnBasedBattlerBase, IUpdateableTextsHandler
@@ -29,23 +48,14 @@ public class FPBattleCharacter : MonoBehaviour, ITurnBasedBattlerBase, IUpdateab
         BattleManager = bm;
     }
 
-    public enum StatusKind
-    {
-        MaxHp,
-        Hp,
-        Offense,
-        Defense,
-        Speed,
-        Name,
-        Max,
-    }
-
     public int CharacterID { get; protected set; }
     public bool IsOutOfBattle => IsRunningAway || IsDead;
     public bool IsRunningAway { get; protected set; }
     public bool IsDead => status.Hp <= 0;
     public int Offense => status.Offense;
     public int Defense => status.Defense;
+
+    public readonly CharacterConditions conditions = new CharacterConditions();
 
     protected CharacterStatus status;
 
@@ -58,12 +68,43 @@ public class FPBattleCharacter : MonoBehaviour, ITurnBasedBattlerBase, IUpdateab
         status.Hp -= amount;
         status.Hp = Mathf.Max(status.Hp, 0);
         BattleManager.ReportCharacterDamaged(this, amount);
-        changedStatusFlag |= 1 << (int)StatusKind.Hp;
+        changedStatusFlag |= 1 << (int)StatusKindEnum.Hp;
     }
 
-    public int CalculateDamage(FPBattleCharacter attacker, int amount)
+    public virtual void Healed(int amount)
     {
-        amount = Mathf.Max(amount - status.Defense, 1);
+        status.Hp += amount;
+        status.Hp = Mathf.Min(status.Hp, status.MaxHp);
+        //BattleManager.ReportCharacterDamaged(this, amount);
+        changedStatusFlag |= 1 << (int)StatusKindEnum.Hp;
+    }
+
+    public int CalculateOffenseDamage(int amount)
+    {
+        if (conditions.HasCondition((int)FPCharacterCondition.Charge))
+        {
+            amount *= 3;
+            conditions.RemoveCondition((int)FPCharacterCondition.Charge);
+        }
+
+        return amount;
+    }
+
+    public int CalculateDefenseDamage(FPBattleCharacter attacker, int amount)
+    {
+        if (conditions.HasCondition((int)FPCharacterCondition.Block))
+        {
+            amount = (int)(amount * 0.25f);
+        }
+
+        if (conditions.HasCondition((int)FPCharacterCondition.GuardThrough))
+        {
+            conditions.RemoveCondition((int)FPCharacterCondition.GuardThrough);
+        }
+        else
+        {
+            amount = Mathf.Max(amount - status.Defense, 1);
+        }
 
         return amount;
     }
@@ -100,16 +141,22 @@ public class FPBattleCharacter : MonoBehaviour, ITurnBasedBattlerBase, IUpdateab
             BattleManager.ReportCharacterStartTurn(this);
             if (command.Kind == 0)
             {
-                BattleManager.DealDamageToCharacter(this, Offense);
+                BattleManager.DealDamageToCharacter(this, CalculateOffenseDamage(Offense));
             }
             else if (command.Kind == 1)
             {
+                OnUseSkill();
                 FPBattleSkillConfig skillConfig = FPDataManager.Instance.GetSkillConfig(command.SkillID);
                 BattleManager.SkillManager.GetBattleSkill(skillConfig.SkillKind)?.DoProcess(skillConfig.SkillID, this);
             }
         }
 
         IsEndBattleProcess = true;
+    }
+
+    protected virtual void OnUseSkill()
+    {
+        
     }
 
     public void OnEndTurn()

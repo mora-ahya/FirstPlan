@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using System.Linq;
 
 // statusUI•\¦‚Íb’è“I‚Èì¬AŒã’ö‘Î‰
 public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase
@@ -20,20 +21,22 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase
     }
 
     readonly List<PlayerSkill> skills = new List<PlayerSkill>();
-
-    int maxHP;
+    readonly Dictionary<int, int> skillLinks = new Dictionary<int, int>();
 
     public void Initialize()
     {
         status = new CharacterStatus();
-        maxHP = 30;
+        status.MaxHp = 30;
         status.Hp = 30;
         status.Offense = 3;
         status.Defense = 3;
         status.Speed = 3;
-        changedStatusFlag = (1 << (int)StatusKind.Max) - 1;
+        changedStatusFlag = (1 << (int)StatusKindEnum.Max) - 1;
 
-        skills.Add(new PlayerSkill(0, 5));
+        GainSkill(0);
+        GainSkill(0);
+        GainSkill(2);
+        GainSkill(10);
     }
 
     public void SetCommand(Command playerCommand)
@@ -67,6 +70,30 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase
     {
         base.Damaged(amount);
         
+    }
+
+    protected override void OnUseSkill()
+    {
+        int skillIndex = skillLinks.GetValueOrDefault(command.SkillID);
+
+        PlayerSkill skill = skills[skillIndex];
+        skill.UsableTimes--;
+        skills[skillIndex] = skill;
+    }
+
+    void GainSkill(int skillId)
+    {
+        if (skillLinks.TryGetValue(skillId, out int skillIndex))
+        {
+            PlayerSkill skill = skills[skillIndex];
+            skill.UsableTimes++;
+            skills[skillIndex] = skill;
+        }
+        else
+        {
+            skills.Add(new PlayerSkill(skillId, 1));
+            skillLinks.Add(skillId, skills.Count - 1);
+        }
     }
 
     public int GetHavingSkillNum()
@@ -114,32 +141,42 @@ public class FPBattlePlayer : FPBattleCharacter, ITurnBasedPlotterBase
 
     string GetStatusString(int num)
     {
-        switch (StatusKind.MaxHp + num)
+        switch (StatusKindEnum.MaxHp + num)
         {
-            case StatusKind.MaxHp:
-                return maxHP.ToString();
-            case StatusKind.Hp:
+            case StatusKindEnum.MaxHp:
+                return status.MaxHp.ToString();
+            case StatusKindEnum.Hp:
                 return status.Hp.ToString();
-            case StatusKind.Offense:
+            case StatusKindEnum.Offense:
                 return status.Offense.ToString();
-            case StatusKind.Defense:
+            case StatusKindEnum.Defense:
                 return status.Defense.ToString();
-            case StatusKind.Speed:
+            case StatusKindEnum.Speed:
                 return status.Speed.ToString();
             default:
                 return string.Empty;
         }
     }
 
-    public void GrowUpStatus(int aPoint, int dPoint, int sPoint)
+    public void GrowUpStatus(StatusKindEnum statusKindEnum, int amount)
     {
-        status.Offense += aPoint;
-        status.Defense += dPoint;
-        status.Speed += sPoint;
-
-        changedStatusFlag |= 1 << (int)StatusKind.Offense;
-        changedStatusFlag |= 1 << (int)StatusKind.Defense;
-        changedStatusFlag |= 1 << (int)StatusKind.Speed;
+        switch (statusKindEnum)
+        {
+            case StatusKindEnum.MaxHp:
+                status.MaxHp += amount;
+                status.Hp += amount;
+                break;
+            case StatusKindEnum.Offense:
+                status.Offense += amount;
+                break;
+            case StatusKindEnum.Defense:
+                status.Defense += amount;
+                break;
+            case StatusKindEnum.Speed:
+                status.Speed += amount;
+                break;
+        }
+        changedStatusFlag |= 1 << (int)statusKindEnum;
     }
 
     #region ITurnBasedPlotterBase

@@ -10,21 +10,10 @@ public interface IEnemyOnUI : IPointerClickHandler
     public Sprite Image { get; }
 }
 
-public struct EnemyStatus
-{
-    public int Hp;
-
-    public int Offense;
-    public int Defense;
-    public int Speed;
-}
-
 // statusUI•\Ž¦‚ÍŽb’è“I‚Èì¬AŒã’ö‘Î‰ž
 public class FPBattleEnemy : FPBattleCharacter
 {
     public string Name => enemyConfig == null ? string.Empty : enemyConfig.Name;
-
-    public int MaxHp => enemyConfig == null ? 0 : enemyConfig.HP;
 
     EnemyConfig enemyConfig;
 
@@ -35,11 +24,12 @@ public class FPBattleEnemy : FPBattleCharacter
         enemyConfig = config;
 
         status = new CharacterStatus();
+        status.MaxHp = config.HP;
         status.Hp = config.HP;
         status.Offense = config.Attack;
         status.Defense = config.Defence;
         status.Speed = config.Speed;
-        changedStatusFlag = (1 << (int)StatusKind.Max) - 1;
+        changedStatusFlag = (1 << (int)StatusKindEnum.Max) - 1;
     }
 
     public EnemyConfig GetConfig()
@@ -55,19 +45,19 @@ public class FPBattleEnemy : FPBattleCharacter
 
     string GetStatusString(int num)
     {
-        switch (StatusKind.MaxHp + num)
+        switch (StatusKindEnum.MaxHp + num)
         {
-            case StatusKind.Name:
+            case StatusKindEnum.Name:
                 return Name;
-            case StatusKind.MaxHp:
-                return MaxHp.ToString();
-            case StatusKind.Hp:
+            case StatusKindEnum.MaxHp:
+                return status.MaxHp.ToString();
+            case StatusKindEnum.Hp:
                 return status.Hp.ToString();
-            case StatusKind.Offense:
+            case StatusKindEnum.Offense:
                 return status.Offense.ToString();
-            case StatusKind.Defense:
+            case StatusKindEnum.Defense:
                 return status.Defense.ToString();
-            case StatusKind.Speed:
+            case StatusKindEnum.Speed:
                 return status.Speed.ToString();
             default:
                 return string.Empty;
